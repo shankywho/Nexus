@@ -14,7 +14,7 @@ This log records architectural choices, trade-offs, and assumptions made during 
 
 ## D-002 Fork FalkorDB Browser v2.3.1 Directly into web/
 - **Context:** §4 and §16 require a fork of `FalkorDB/falkordb-browser` pinned to `v2.3.1`. Git submodules can break in CI/CD and automated runners.
-- **Choice:** Vendored the repository directly into `web/` with `.git` removed, retaining `LICENSE.txt` and all copyright headers, documented in `MODIFICATIONS.md`.
+- **Choice:** Vendored the repository directly into `web/` with `.git` removed, retaining `LICENSE.txt` and all copyright headers, documented in `../MODIFICATIONS.md`.
 - **Why:** Ensures reproducibility and reliable `npm ci` and container builds without external submodule fetch failures.
 - **How to undo:** Delete `web/` and re-add as a git submodule if required.
 
@@ -123,7 +123,7 @@ This log records architectural choices, trade-offs, and assumptions made during 
 - **D-010:** Docs GraphRAG and MCP multigraph architecture indexing markdown docs into `nexus_docs`.
 
 ### 3. Unverified Contracts
-- **None.** All integration contracts (C1 through C9) in [`docs/CONTRACTS.md`](docs/CONTRACTS.md) are **✅ Verified**.
+- **None.** All integration contracts (C1 through C9) in [`CONTRACTS.md`](CONTRACTS.md) are **✅ Verified**.
 
 ### 4. Demo Copy-Paste Sequence
 ```bash

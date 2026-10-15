@@ -1,232 +1,26 @@
+# NEXUS Web
 
-[![Dockerhub](https://img.shields.io/docker/pulls/falkordb/falkordb-browser?label=Docker)](https://hub.docker.com/r/falkordb/falkordb-browser/)
-[![Discord](https://img.shields.io/discord/1146782921294884966?style=flat-square)](https://discord.gg/6M4QwDXn2w)
-[![Workflow](https://github.com/FalkorDB/falkordb-browser/actions/workflows/nextjs.yml/badge.svg?branch=main)](https://github.com/FalkorDB/falkordb-browser/actions/workflows/nextjs.yml)
+Next.js HUD for NEXUS. This is a fork of [FalkorDB Browser](https://github.com/FalkorDB/falkordb-browser) v2.3.1 (ELv2 / SSPL). Upstream changes are listed in [../MODIFICATIONS.md](../MODIFICATIONS.md) and the upstream license is kept in [LICENSE.txt](LICENSE.txt).
 
-# FalkorDB Browser
+## NEXUS code
 
-[![Try Free](https://img.shields.io/badge/Try%20Free-FalkorDB%20Cloud-FF8101?labelColor=FDE900&style=for-the-badge&link=https://app.falkordb.cloud)](https://app.falkordb.cloud)
+| Path | Purpose |
+|---|---|
+| `app/nexus/page.tsx` | HUD page at `/nexus` |
+| `components/nexus/` | `AuditBar`, `LiveTopology`, `AskPanel`, `ProvenanceBadge`, `SimulateSyncButton`, `IngestionStreams`, `NodeInspector` |
+| `lib/nexus/api.ts` | Typed client for the NEXUS API |
+| `e2e/tests/nexus.spec.ts` | Playwright test for the audits and topology |
 
-> 🎉 JUNE 2025 NEW UPDATE: Improved UI & Experience 
+Everything else under `app/` is upstream FalkorDB Browser, kept for the Cypher explorer. `next.config.js` proxies `/api/nexus/*` and `/api/events/stream` to the API at `NEXUS_API_URL`.
 
-## Visualize, manipulate and manage FalkorDB graph data interactively to monitor and explore data changes. The latest version introduced the following improvements
-![FalkorDB browser 06-25](https://github.com/user-attachments/assets/bc0060d0-1b55-484a-8e88-9c72b5085e55)
-
-#### Faster Graph Creation & Querying  
-Quickly create new graphs and run queries with fewer clicks. The UI now guides you through graph setup with smarter defaults and clearer feedback.
-
-#### Simplified Node Editing  
-Editing node properties is now faster and more intuitive. Fewer modal windows, inline property editing, and immediate updates make this flow significantly more usable.
-
-#### Query History Panel  
-A new history panel stores your recent queries. This makes it easier to iterate, profile, debug, or rerun past queries without leaving the editor.
-
-#### Better Search  
-The search bar now indexes schema, nodes, and metadata. Results are ranked more effectively and load with lower latency.
-
-#### Expanded Settings & User Controls  
-New options let you fine-tune database behavior, toggle visual preferences, and manage users without falling back to CLI tools.
-
-#### Node Style Customization  
-Customize the visual appearance of nodes per label. Select custom colors from a palette, adjust node sizes, and choose which property to display as the node caption. All customizations are saved per graph and persist across sessions.
-
-
-
-| ![image (4)](https://github.com/user-attachments/assets/658fa59f-5316-475c-8bd7-b26651e9902c) | ![FalkorDB browser 06-25](https://github.com/user-attachments/assets/ee907fa6-038c-462b-9240-456a2d2c2a99) |
-|---------------------------------------------------|---------------------------------------------------|
-
-
-## Get Started & Demo
-
-Access the Browser: (https://browser.falkordb.com)
-
-### Quick start
-
-#### Run the graph database and browser from one docker container
-
-**Step 1:**
-```
-docker run -p 3000:3000 -p 6379:6379 -it --rm falkordb/falkordb:latest
-```
-**Step 2:**
-
-Open [http://localhost:3000](http://localhost:3000) with your browser.
-
-> Note: to run the application with a different URL, set the NEXTAUTH_URL environment variable.
-
-```
-docker run -p 3000:3000 -e "NEXTAUTH_URL=https://www.yoururl.com" -p 6379:6379 -it --rm falkordb/falkordb:latest
-```
-
-For reverse-proxy deployments using `NEXTAUTH_URL=auto`, set `TRUST_PROXY_HEADERS=true` only when the proxy strips or overwrites incoming `X-Forwarded-Host` and `X-Forwarded-Proto` headers.
-
-> Note: Alternativly, you can run the browser from source and database using Docker
-
-### Run the graph database from Docker container
-
-```
-docker run -p 6379:6379 -it --rm falkordb/falkordb:latest
-```
-
-### Run browser-only Docker image (with local LOAD CSV defaults)
-
-If you run the browser separately from FalkorDB, use the browser image and set
-the same CSV temp defaults used by compose:
+## Develop
 
 ```bash
-docker run -p 3000:3000 --rm \
-  -e CSV_STORAGE=local \
-  -e CSV_LOCAL_TEMP_DIR=/var/lib/FalkorDB/import \
-  -e CSV_LOCAL_LOAD_URI_MODE=file \
-  -v falkordb-import:/var/lib/FalkorDB/import \
-  falkordb/falkordb-browser:latest
+cp .env.local.template .env.local
+npm ci
+npm run dev        # http://localhost:3000/nexus
+npm test           # unit tests
+npm run lint
+npm run build
+npm run test:e2e   # Playwright; needs the app and API running
 ```
-
-When FalkorDB runs in a different container, mount the same `falkordb-import`
-volume to `/var/lib/FalkorDB/import` there as well and configure
-`IMPORT_FOLDER /var/lib/FalkorDB/import` on the DB side.
-
-### Use MinIO for CSV temp uploads (S3-compatible)
-
-The CSV upload flow supports any S3-compatible backend, including MinIO. This
-repo includes a local MinIO stack in [docker-compose.minio.yml](docker-compose.minio.yml)
-for exercising the **S3 storage provider** (streaming multipart upload + presigned
-GET).
-
-> **⚠️ `LOAD CSV` needs HTTPS.** FalkorDB fetches the CSV itself and only accepts
-> `https://` or `file://` URIs — plain `http://` is rejected ("Unsupported URI").
-> A plain‑http MinIO endpoint (`http://localhost:9000`) works for the browser→store
-> upload, but the presigned URL handed to FalkorDB is `http://…`, so the import
-> fails fast with a clear error. For a full end‑to‑end `LOAD CSV`, either:
-> - point at an **HTTPS‑reachable** object store — real **S3 / Cloudflare R2**, or
->   MinIO behind a TLS proxy (set `S3_ENDPOINT=https://…`), or
-> - use the **local** backend for local dev — `CSV_STORAGE=local` with
->   `CSV_LOCAL_LOAD_URI_MODE=file` and a shared `IMPORT_FOLDER` (see above); no
->   HTTPS needed.
-
-1. Start MinIO and create the private CSV temp bucket:
-
-  ```bash
-  docker compose -f docker-compose.minio.yml up -d
-  ```
-
-2. Set these values in `.env.local` (the endpoint is how the **browser server**
-   reaches MinIO; for `LOAD CSV` to succeed it must resolve to an HTTPS URL the
-   **database** can reach):
-
-  ```env
-  CSV_STORAGE=s3
-  S3_ACCESS_KEY_ID=minioadmin
-  S3_SECRET_ACCESS_KEY=minioadmin
-  S3_REGION=us-east-1
-  S3_BUCKET=falkordb-csv-temp
-  S3_ENDPOINT=https://minio.example.com   # must be HTTPS-reachable by FalkorDB
-  S3_FORCE_PATH_STYLE=true
-  S3_KEY_PREFIX=csv-temp/
-  S3_URL_EXPIRES_IN=3600
-  ```
-
-3. Restart the browser server and upload CSV from Manage Graph -> Upload Data.
-
-Notes:
-- Keep the bucket private (default in the init container).
-- Signed URLs are generated automatically for LOAD CSV and must be HTTPS-reachable by FalkorDB.
-- For local non-TLS MinIO (`http://localhost:9000`), prefer `CSV_STORAGE=local` with `CSV_LOCAL_LOAD_URI_MODE=file`.
-- MinIO console is available at `http://localhost:9001` (user/password: `minioadmin`/`minioadmin`).
-
-### Deploy to Kubernetes with Helm
-
-Deploy the FalkorDB Browser to your Kubernetes cluster using Helm:
-
-```bash
-# Install the chart
-helm install falkordb-browser oci://ghcr.io/falkordb/helm-charts/falkordb-browser
-
-# Access via port-forward
-kubectl port-forward svc/falkordb-browser 3000:3000
-```
-
-Or install from source:
-
-```bash
-# Clone the repository
-git clone https://github.com/FalkorDB/falkordb-browser.git
-cd falkordb-browser
-
-# Install the chart
-helm install falkordb-browser ./helm/falkordb-browser
-
-# Access via port-forward
-kubectl port-forward svc/falkordb-browser 3000:3000
-```
-
-For detailed configuration options and examples, see the [Helm chart documentation](./helm/falkordb-browser/README.md).
-
-### Build and run browser from source
-
-**Prerequisites:**
-- Node.js 20.19.0 or higher
-
-**Steps:**
-* Clone the git repository `git clone git@github.com:FalkorDB/falkordb-browser.git`
-* Create .env.local in the clone directory `cp .env.local.template .env.local`
-* Build the node project `npm -i`
-* run the server `npm run dev`
-
-Open [http://localhost:3000](http://localhost:3000) with your browser.
-
-### Error help
-
-When a Cypher query fails, the browser shows the database's message together with an
-actionable **💡 hint**. For a mistyped function or variable it offers a
-**"Did you mean…?"** suggestion (e.g. `Unknown function 'lenght'` → *Did you mean
-`length()`?*), computed from the built-in/UDF function list and the variables in your
-query. The error is also surfaced **inline in the editor** as a red squiggle on the
-offending token, with the hint on hover and a one-click **quick fix** to apply the
-suggestion. As you type, unknown node labels that look like a typo of a known label are
-flagged with a warning and a quick fix. When the static help isn't enough, a **"Fix with
-AI"** button (shown only when a supported OpenAI-compatible model — OpenAI/Groq/xAI/Ollama/
-LM Studio — is configured) sends the **query and its error** to your configured provider on an
-explicit click and returns an explanation + a corrected query you can insert into the editor.
-The full server message is always shown — recognized errors display it directly, and when the
-toast shows a friendlier summary instead, you can expand **"See more"** to read the raw text and
-use **"Copy"** for one-click copy into a bug report. Where helpful, a hint includes a
-**"Learn more →"** link to the matching FalkorDB docs page, and the query-timeout hint deep-links
-straight to the **timeout field in Settings**. Hints are currently English-only; localization is a
-deliberate follow-up (it pairs with introducing stable structured error codes).
-The logic lives in `lib/cypherSuggestions.ts`, `lib/cypherDiagnostics.ts`, and `lib/aiFix.ts`,
-with the static hint catalog (and its optional docs/deep-links) in `lib/cypherErrors.ts` and the
-clipboard helper in `lib/clipboard.ts`.
-
-### Testing
-
-* **Unit tests** (Node's built-in test runner, no extra tooling): `npm test`
-  Runs the `*.test.ts` suites under `app/` and `lib/`. Gated in CI by the **Build**
-  workflow. These execute TypeScript directly via `node --test`, which relies on native
-  type-stripping — use **Node ≥ 22.18** (CI runs Node 24). Older Node (e.g. 20.x) can run
-  the app but cannot run these tests.
-* **Coverage**: `npm run test:coverage` — runs the unit tests and enforces **100%**
-  line/branch/function coverage on `lib/cypherSuggestions.ts`, `lib/cypherDiagnostics.ts`,
-  `lib/aiFix.ts`, `lib/cypherErrors.ts`, and `lib/clipboard.ts`.
-* **Smoke tests vs a real FalkorDB**: `npm run test:smoke` — runs every `lib/**/*.smoke.ts`
-  suite against the actual server error wording. This covers the "Did you mean…?"
-  suggestions and the **error-hint drift guard**: each entry in the hint catalog
-  (`lib/cypherErrors.ts`) is paired with a query in `lib/cypherErrorDriftCases.ts`, and the
-  smoke test asserts the live FalkorDB message still matches — so a server-side rewording is
-  caught instead of silently dropping a hint. The smoke tests are gated: they **skip** unless
-  `FALKORDB_SMOKE=1`, and **fail** (rather than skipping) if that is set but no server is
-  reachable. Run locally with:
-  ```bash
-  docker run -d -p 6379:6379 falkordb/falkordb
-  FALKORDB_SMOKE=1 npm run test:smoke   # optional: FALKORDB_URL=redis://host:port
-  ```
-  In CI the **Build** workflow runs these against a pinned FalkorDB release (deterministic for
-  PRs), while the scheduled **Cypher error drift canary** workflow runs the same tests against
-  `:latest` to surface drift early without blocking pull requests.
-* **Lint**: `npm run lint`
-* **End-to-end tests** (Playwright): `npm run test:e2e`
-
-
-
-
-

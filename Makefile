@@ -1,10 +1,13 @@
-.PHONY: setup up down seed sync eval test lint reset
+.PHONY: help setup up down seed sync eval test lint reset
+
+help:
+	@grep -E '^[a-z]+:' Makefile | cut -d: -f1 | tr '\n' ' '; echo
 
 setup:
 	bash scripts/setup.sh
 
 up:
-	docker compose up -d
+	docker compose up -d --build
 
 down:
 	docker compose down
