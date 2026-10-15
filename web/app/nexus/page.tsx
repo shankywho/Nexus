@@ -158,7 +158,7 @@ export default function NexusDashboard() {
             <span className="nx-display">Ask the brain</span>
             <span className="nx-chip">
               <span className="nx-dot" />
-              answers cite sources
+              sources shown
             </span>
           </header>
           <div className="flex-1 min-h-0">

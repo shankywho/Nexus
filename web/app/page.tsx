@@ -59,20 +59,20 @@ export default function Landing() {
         <section className="lp-section" id="problem">
           <div className="lp-wrap">
             <p className="lp-sign" style={{ ["--tab" as string]: "var(--coral)" }}>The problem</p>
-            <h2 className="lp-h2">Search finds the loudest answer, not the current one.</h2>
+            <h2 className="lp-h2">Search ranks text, so a superseded ADR can outrank the one that replaced it.</h2>
             <p className="lp-p">
-              The Slack thread where Redis won is long, clear and easy to retrieve. The incident and the ADR that undid it are short.
-              A tool that ranks text will hand a new engineer the decision that no longer holds.
+              In our test baseline, the top hit for the sessions question is ADR-038, the ADR that moved sessions to Redis.
+              ADR-042, which replaced it, is not in the top three. A new engineer gets the decision that no longer holds.
             </p>
 
             <div className="lp-compare">
               <div className="lp-panel">
-                <div className="lp-panel-head"><span>Keyword search</span><span className="lp-tag lp-tag-bad">out of date</span></div>
+                <div className="lp-panel-head"><span>Keyword baseline</span><span className="lp-tag lp-tag-bad">out of date</span></div>
                 <div className="lp-panel-body">
                   <p className="lp-q">Where do we store user sessions?</p>
                   <blockquote className="lp-quote">
-                    <small>Top result · #eng-backend · Sep 18</small>
-                    Decision: move sessions to Redis. I will open Linear ticket LIN-391 and write ADR-038.
+                    <small>Top result · ADR-038 · Sep 22</small>
+                    ADR-038: Session store on Redis. Ratifies migration of user session persistence from Postgres to Redis.
                   </blockquote>
                   <p className="lp-answer">Redis.</p>
                 </div>
@@ -90,7 +90,7 @@ export default function Landing() {
               </div>
             </div>
             <p className="lp-note">
-              On 12 test questions, plain keyword search gave a superseded answer 42% of the time. NEXUS gave none.
+              On 12 test questions, the keyword baseline gave a superseded answer 42% of the time. NEXUS gave none.
               The questions and the scoring script are in the repository (<code>fixtures/company/gold_questions.json</code>, <code>scripts/eval.py</code>).
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function Landing() {
         <section className="lp-section" id="lifecycle">
           <div className="lp-wrap">
             <p className="lp-sign" style={{ ["--tab" as string]: "var(--lemon)" }}>How a decision ends</p>
-            <h2 className="lp-h2">The same story, as NEXUS reads it.</h2>
+            <h2 className="lp-h2">The sessions story as seven events.</h2>
             <div className="lp-life">
               <ol className="lp-rail">
                 {TIMELINE.map((t) => (
@@ -136,11 +136,11 @@ export default function Landing() {
             <div className="lp-shots">
               <figure className="lp-shot">
                 <Image src="/img/office-floor.png" alt="The NEXUS office view: four team rooms with desks, server racks and decision boards." width={1920} height={1080} />
-                <figcaption>The office. One room per team, one desk per person, one board per decision. Replaced boards are struck through.</figcaption>
+                <figcaption>The office has one room per team, one desk per person and one board per decision. Replaced boards are struck through.</figcaption>
               </figure>
               <figure className="lp-shot">
                 <Image src="/img/decision-graph.png" alt="The NEXUS decision graph: one island per team with dashed red arrows from new decisions to the ones they replace." width={1920} height={1080} />
-                <figcaption>The graph. The same data as team islands. Dashed red arrows point from a new decision to the one it replaces.</figcaption>
+                <figcaption>The graph shows the same data as one island per team. Dashed red arrows point from a new decision to the one it replaces.</figcaption>
               </figure>
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function Landing() {
         <section className="lp-section" id="run">
           <div className="lp-wrap">
             <p className="lp-sign" style={{ ["--tab" as string]: "var(--mint)" }}>Run it</p>
-            <h2 className="lp-h2">Five minutes from clone to a working office.</h2>
+            <h2 className="lp-h2">Clone it, seed it, open it.</h2>
             <div className="lp-run">
               <div className="lp-term">
                 <div className="lp-term-bar">terminal</div>
