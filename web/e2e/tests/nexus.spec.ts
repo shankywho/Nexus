@@ -70,23 +70,25 @@ test.describe("NEXUS Web Features", () => {
     await page.goto("/nexus");
 
     // 1. Check HUD Header elements
-    await expect(page.locator("header")).toContainText("NEXUS");
+    await expect(page.locator("h1")).toContainText("NEXUS");
+    await expect(page.locator('[data-testid="office-floor"]')).toBeVisible();
+    await page.click('[data-testid="view-graph"]');
     await expect(page.locator('[data-testid="live-topology-canvas"]')).toBeVisible();
 
     // 2. Click WHO OWNS WHAT
     await page.click('[data-testid="audit-who-owns-what"]');
-    await expect(page.locator("text=HIGHLIGHTS: 2")).toBeVisible();
+    await expect(page.locator("text=2 highlighted")).toBeVisible();
 
     // 3. Click DECISION TRACE
     await page.click('[data-testid="audit-decision-trace"]');
-    await expect(page.locator("text=HIGHLIGHTS: 1")).toBeVisible();
+    await expect(page.locator("text=1 highlighted")).toBeVisible();
 
     // 4. Click STALE KNOWLEDGE
     await page.click('[data-testid="audit-stale-knowledge"]');
-    await expect(page.locator("text=HIGHLIGHTS: 2")).toBeVisible();
+    await expect(page.locator("text=2 highlighted")).toBeVisible();
 
     // 5. Click BUS FACTOR
     await page.click('[data-testid="audit-bus-factor"]');
-    await expect(page.locator("text=HIGHLIGHTS: 2")).toBeVisible();
+    await expect(page.locator("text=2 highlighted")).toBeVisible();
   });
 });

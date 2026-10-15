@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { RefreshCw, Square, Check, AlertCircle } from "lucide-react";
 import { startSync, cancelSync, getSyncStatus, SyncStatus } from "@/lib/nexus/api";
 
 export interface SimulateSyncButtonProps {
@@ -9,12 +8,7 @@ export interface SimulateSyncButtonProps {
 }
 
 export function SimulateSyncButton({ onSyncCompleted }: SimulateSyncButtonProps) {
-  const [status, setStatus] = useState<SyncStatus>({
-    state: "idle",
-    processed: 0,
-    total: 0,
-    run_id: "",
-  });
+  const [status, setStatus] = useState<SyncStatus>({ state: "idle", processed: 0, total: 0, run_id: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,11 +16,9 @@ export function SimulateSyncButton({ onSyncCompleted }: SimulateSyncButtonProps)
     try {
       const st = await getSyncStatus();
       setStatus(st);
-      if (st.state === "completed" && onSyncCompleted) {
-        onSyncCompleted();
-      }
+      if (st.state === "completed") onSyncCompleted?.();
     } catch {
-      // ignore
+      // API offline: leave the button idle
     }
   }, [onSyncCompleted]);
 
@@ -35,76 +27,45 @@ export function SimulateSyncButton({ onSyncCompleted }: SimulateSyncButtonProps)
   }, [checkStatus]);
 
   useEffect(() => {
-    if (status.state === "running") {
-      const interval = setInterval(checkStatus, 500);
-      return () => clearInterval(interval);
-    }
+    if (status.state !== "running") return undefined;
+    const t = setInterval(checkStatus, 500);
+    return () => clearInterval(t);
   }, [status.state, checkStatus]);
 
-  const handleToggleSync = async () => {
+  const toggle = async () => {
     setError(null);
-    if (status.state === "running") {
-      try {
-        await cancelSync();
-        await checkStatus();
-      } catch (err: any) {
-        setError(err.message || "Failed to cancel");
-      }
-      return;
-    }
-
-    setLoading(true);
     try {
-      await startSync(300, false);
+      if (status.state === "running") {
+        await cancelSync();
+      } else {
+        setLoading(true);
+        await startSync(300, false);
+      }
       await checkStatus();
-    } catch (err: any) {
-      setError(err.message || "Failed to start sync");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const isRunning = status.state === "running";
+  const running = status.state === "running";
+  const label = running
+    ? `Stop sync · ${status.processed}/${status.total || "?"}`
+    : status.state === "completed"
+      ? `Replay sync · ${status.processed}/${status.total} done`
+      : "Replay company sync";
 
   return (
-    <div className="flex items-center gap-2 font-mono">
+    <div className="flex items-center gap-2">
       {error && (
-        <span className="text-[10px] text-[#ef4444] flex items-center gap-1" title={error}>
-          <AlertCircle size={10} />
-          {error.slice(0, 30)}
+        <span role="alert" className="nx-mono" style={{ color: "var(--nx-coral)" }} title={error}>
+          {error.slice(0, 36)}
         </span>
       )}
-
-      <button
-        type="button"
-        data-testid="simulate-sync-button"
-        onClick={handleToggleSync}
-        disabled={loading}
-        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase border transition-all ${
-          isRunning
-            ? "bg-[#f59e0b]/20 border-[#f59e0b] text-[#f59e0b] hover:bg-[#f59e0b]/30"
-            : status.state === "completed"
-            ? "bg-[#10b981]/15 border-[#10b981] text-[#10b981] hover:bg-[#10b981]/25"
-            : "bg-[#141414] border-[#27272a] text-zinc-300 hover:text-zinc-100 hover:border-zinc-500"
-        }`}
-      >
-        {isRunning ? (
-          <>
-            <RefreshCw size={12} className="animate-spin" />
-            <span>SYNCING ({status.processed}/{status.total || 50})</span>
-            <Square size={10} className="ml-1 text-[#ef4444]" />
-          </>
-        ) : status.state === "completed" ? (
-          <>
-            <Check size={12} />
-            <span>SYNC REPLAYED (50/50)</span>
-          </>
-        ) : (
-          <>
-            <RefreshCw size={12} />
-            <span>SIMULATE LIVE COMPANY SYNC</span>
-          </>
-        )}
+      <button type="button" data-testid="simulate-sync-button" className={`nx-btn ${running ? "is-warn" : ""}`} onClick={toggle} disabled={loading}>
+        <span className={`nx-dot ${running ? "is-busy nx-blink" : ""}`} />
+        {label}
       </button>
     </div>
   );

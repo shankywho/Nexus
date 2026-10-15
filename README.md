@@ -2,7 +2,9 @@
 
 **Organizational telemetry and decision graph.** NEXUS ingests Slack, Linear, GitHub, incidents and ADRs into FalkorDB, tracks which decisions superseded which, and answers questions with provenance, so engineers do not act on stale decisions.
 
-![NEXUS HUD](docs/img/hud.png)
+![NEXUS office floor view](docs/img/office-floor.png)
+
+*Office view: teams are rooms, people sit at desks with a note on what they own, services are server racks, decisions are wall boards. Superseded decisions are stamped REPLACED. The Graph toggle switches to the force-directed topology (see [docs/img/hud.png](docs/img/hud.png)).*
 
 ## Why
 
@@ -15,7 +17,7 @@ Flat vector search over team history returns superseded answers. A migration to 
 - **Supersession engine:** detects reversals and sets `invalid_at` on older decisions.
 - **Four audits:** who owns what, decision trace, stale knowledge, bus factor.
 - **Ask agent:** routes a question, runs multi-hop Cypher, validates against the graph, and returns current and superseded sources.
-- **HUD:** Next.js dashboard with a live topology (superseded edges dashed red, active edges green), audit bar, ask panel and live sync via SSE.
+- **HUD:** Next.js dashboard with an office floor-plan view and a live force-graph topology (superseded edges dashed red, active edges green), audit bar, ask panel and live sync via SSE.
 - **Zero-key mode:** `MOCK_EXTERNALS=true` runs everything offline with deterministic extractors.
 
 ## Repository layout
@@ -125,4 +127,5 @@ Latency figures come from a local run in mock mode.
 ## Built on
 
 - [FalkorDB Browser](https://github.com/FalkorDB/falkordb-browser) v2.3.1 (SSPL / ELv2), modified in `web/`. Changes are listed in [MODIFICATIONS.md](MODIFICATIONS.md). The upstream [LICENSE](web/LICENSE.txt) is unchanged.
+- UI design language (chunky pixel panels, three-font pixel type system) is inspired by [Munder Difflin](https://github.com/HarnessMD/munder-difflin) (MIT), used with the author's permission. No code or art assets were copied. Fonts: Press Start 2P, Pixelify Sans and VT323 (SIL OFL) via `@fontsource`.
 - [FalkorDB](https://github.com/FalkorDB/FalkorDB), [Graphiti](https://github.com/getzep/graphiti) (Apache-2.0), [GraphRAG-SDK](https://github.com/FalkorDB/GraphRAG-SDK), [react-force-graph](https://github.com/vasturiano/react-force-graph).

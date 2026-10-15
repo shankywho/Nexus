@@ -1,0 +1,159 @@
+/* NEXUS office theme. Pixel-grid UI inspired by the design language of
+   HarnessMD/munder-difflin (MIT): chunky layered borders, flat color, three
+   pixel typefaces. Night-shift palette: blue-green chrome around a warm floor. */
+
+.nx {
+  --nx-bg: #0c1720;
+  --nx-panel: #13242f;
+  --nx-panel-2: #1a3140;
+  --nx-line: #2f5568;
+  --nx-ink: #070c10;
+  --nx-cream: #f6ebcb;
+  --nx-dim: #9fb3b0;
+  --nx-mint: #6be3a5;
+  --nx-sky: #5cc8f0;
+  --nx-blue: #6c8ef5;
+  --nx-lemon: #ffd166;
+  --nx-coral: #ff6b6b;
+  --nx-display: "Press Start 2P", monospace;
+  --nx-ui: "Pixelify Sans", system-ui, sans-serif;
+  --nx-mono: "VT323", ui-monospace, monospace;
+
+  position: fixed;
+  inset: 0;
+  background: var(--nx-bg);
+  color: var(--nx-cream);
+  font-family: var(--nx-ui);
+  font-size: 15px;
+  line-height: 1.3;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  overflow: hidden;
+}
+
+.nx *,
+.nx *::before,
+.nx *::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+.nx-display {
+  font-family: var(--nx-display);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 400;
+}
+.nx-mono {
+  font-family: var(--nx-mono);
+  font-size: 18px;
+  line-height: 18px;
+}
+
+/* Layered pixel panel: ink / line / ink */
+.nx-panel {
+  position: relative;
+  background: var(--nx-panel);
+  box-shadow:
+    0 0 0 2px var(--nx-ink),
+    0 0 0 4px var(--nx-line),
+    0 0 0 6px var(--nx-ink);
+  margin: 6px;
+}
+.nx-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  padding: 6px 10px;
+  background: var(--nx-panel-2);
+  border-bottom: 2px solid var(--nx-ink);
+  color: var(--nx-cream);
+}
+
+.nx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  color: var(--nx-cream);
+  background: var(--nx-panel-2);
+  border: 2px solid var(--nx-ink);
+  box-shadow: inset 0 0 0 2px var(--nx-line), 0 4px 0 var(--nx-ink);
+  cursor: pointer;
+  transition: none;
+}
+.nx-btn:hover:not(:disabled) { background: #22404f; color: #fff; }
+.nx-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: inset 0 0 0 2px var(--nx-line), 0 0 0 var(--nx-ink); }
+.nx-btn:disabled { opacity: 0.55; cursor: default; }
+.nx-btn[aria-pressed="true"],
+.nx-btn.is-on {
+  background: var(--nx-mint);
+  color: var(--nx-ink);
+  box-shadow: inset 0 0 0 2px #2f9c6c, 0 4px 0 var(--nx-ink);
+}
+.nx-btn.is-warn { background: var(--nx-lemon); color: var(--nx-ink); box-shadow: inset 0 0 0 2px #c79a2c, 0 4px 0 var(--nx-ink); }
+
+.nx :focus-visible { outline: 2px solid var(--nx-lemon); outline-offset: 2px; }
+
+.nx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 2px solid var(--nx-ink);
+  background: var(--nx-panel-2);
+  box-shadow: inset 0 0 0 1px var(--nx-line);
+  font-family: var(--nx-mono);
+  font-size: 17px;
+  line-height: 16px;
+  color: var(--nx-cream);
+  white-space: nowrap;
+}
+.nx-dot { width: 8px; height: 8px; background: var(--nx-mint); box-shadow: 0 0 0 2px var(--nx-ink); }
+.nx-dot.is-bad { background: var(--nx-coral); }
+.nx-dot.is-busy { background: var(--nx-lemon); }
+
+.nx-input {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--nx-cream);
+  background: var(--nx-ink);
+  border: 2px solid var(--nx-line);
+}
+.nx-input::placeholder { color: #5e7a84; }
+
+.nx-scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--nx-line) var(--nx-ink); }
+
+@keyframes nx-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes nx-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes nx-ring { 0% { opacity: 0.9; } 100% { opacity: 0; } }
+.nx-bob { animation: nx-bob 1.2s steps(2, end) infinite; }
+.nx-blink { animation: nx-blink 1s steps(2, end) infinite; }
+.nx-ring { animation: nx-ring 1.4s steps(4, end) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-bob, .nx-blink, .nx-ring { animation: none; }
+}
+
+@layer base {
+/* upstream globals.css forces JetBrains Mono on every element with !important;
+   these rules out-rank it inside the office theme. */
+.nx *:not(.codicon) { font-family: var(--nx-ui) !important; }
+.nx *.nx-display:not(.codicon),
+.nx *.nx-t-display:not(.codicon) { font-family: var(--nx-display) !important; }
+.nx *.nx-mono:not(.codicon),
+.nx *.nx-t-mono:not(.codicon),
+.nx *.nx-chip:not(.codicon),
+.nx code:not(.codicon),
+.nx pre:not(.codicon) { font-family: var(--nx-mono) !important; }
+.nx *.nx-t-ui:not(.codicon) { font-family: var(--nx-ui) !important; }
+.nx .nx-mono *:not(.codicon),
+.nx .nx-chip *:not(.codicon) { font-family: inherit !important; }
+.nx .nx-display *:not(.codicon) { font-family: inherit !important; }
+}
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

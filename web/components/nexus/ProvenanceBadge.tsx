@@ -1,74 +1,46 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, XCircle } from "lucide-react";
+
+type Src = string | { id?: string; label?: string; via?: string | null; reason?: string | null; title?: string; ref?: string; date?: string; channel?: string; thread_id?: string; text?: string } | null | undefined;
 
 export interface ProvenanceBadgeProps {
-  currentSource?: string | { title?: string; ref?: string; date?: string; channel?: string; thread_id?: string; text?: string } | null;
-  supersededSource?: string | { title?: string; ref?: string; date?: string; channel?: string; thread_id?: string; text?: string } | null;
+  currentSource?: Src;
+  supersededSource?: Src;
   decisionId?: string;
   reason?: string;
 }
 
-export function ProvenanceBadge({
-  currentSource,
-  supersededSource,
-  decisionId,
-  reason,
-}: ProvenanceBadgeProps) {
-  const formatSource = (src: any, defaultText: string) => {
-    if (!src) return defaultText;
-    if (typeof src === "string") return src;
-    if (src.title && src.ref) return `${src.title} (${src.date || "2026-10-12"}) via ${src.ref}`;
-    if (src.channel) return `#${src.channel} Slack Thread (${src.date || "2026-09-18"})`;
-    return src.title || src.text || defaultText;
-  };
+function formatSource(src: Src): string | null {
+  if (!src) return null;
+  if (typeof src === "string") return src;
+  if (src.label) return `${src.label}${src.via ? ` via ${src.via}` : ""}`;
+  if (src.title && src.ref) return `${src.title}${src.date ? ` (${src.date})` : ""} via ${src.ref}`;
+  if (src.channel) return `#${src.channel}${src.date ? ` (${src.date})` : ""}`;
+  return src.title || src.text || null;
+}
 
-  const currentDisplay = formatSource(
-    currentSource,
-    "ADR-042 (2026-10-12) via LIN-409"
-  );
-  const supersededDisplay = formatSource(
-    supersededSource,
-    "#eng-backend Slack Thread (2026-09-18) — Invalidated"
-  );
-
+export function ProvenanceBadge({ currentSource, supersededSource, decisionId, reason }: ProvenanceBadgeProps) {
+  const current = formatSource(currentSource);
+  const old = formatSource(supersededSource);
   return (
-    <div className="p-3 border border-[#27272a] bg-[#141414] font-mono text-xs shadow-lg space-y-2">
-      <div className="flex items-center justify-between border-b border-[#27272a] pb-1.5 mb-1.5">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 bg-[#10b981]" />
-          <span className="text-[10px] tracking-widest uppercase font-bold text-zinc-300">
-            TEMPORAL PROVENANCE RESOLUTION {decisionId ? `(${decisionId})` : ""}
+    <section className="nx-panel" aria-label="Provenance" data-testid="provenance-badge">
+      <header className="nx-panel-head">
+        <span className="nx-display">Provenance{decisionId ? ` · ${decisionId}` : ""}</span>
+      </header>
+      <div className="p-3 flex flex-col gap-3">
+        <div className="flex gap-3 items-start">
+          <span className="nx-chip" style={{ background: "#1f8a5a", color: "#fff" }}>use</span>
+          <span className="nx-mono" style={{ fontSize: 19, lineHeight: "19px" }}>{current ?? "No current source found"}</span>
+        </div>
+        <div className="flex gap-3 items-start">
+          <span className="nx-chip" style={{ background: "#a63a3a", color: "#fff" }}>old</span>
+          <span className="nx-mono" style={{ fontSize: 19, lineHeight: "19px", color: "var(--nx-dim)", textDecoration: "line-through" }}>
+            {old ?? "Nothing superseded"}
           </span>
         </div>
-        <span className="text-[10px] tracking-wider uppercase text-zinc-500">
-          BI-TEMPORAL AUDIT
-        </span>
+        {reason && <p style={{ color: "var(--nx-dim)" }}>Why: {reason}</p>}
       </div>
-
-      <div className="space-y-1.5">
-        <div className="flex items-start gap-2 text-[#10b981]">
-          <CheckCircle2 size={15} className="shrink-0 mt-0.5" />
-          <div className="leading-tight">
-            <span className="font-semibold uppercase tracking-wider text-[10px] block text-[#10b981]/80">
-              CURRENT SOURCE
-            </span>
-            <span>{currentDisplay}</span>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-2 text-[#ef4444]">
-          <XCircle size={15} className="shrink-0 mt-0.5" />
-          <div className="leading-tight">
-            <span className="font-semibold uppercase tracking-wider text-[10px] block text-[#ef4444]/80">
-              SUPERSEDED
-            </span>
-            <span>{supersededDisplay}</span>
-            {reason && <span className="block text-[10px] text-zinc-400 mt-0.5">Reason: {reason}</span>}
-          </div>
-        </div>
-      </div>
-    </div>
+    </section>
   );
 }

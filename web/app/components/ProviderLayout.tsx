@@ -39,7 +39,7 @@ export default function ProviderLayout({
   showUDF,
 }: ProviderLayoutProps) {
   const pathname = usePathname();
-  const showNavbarAndHeader = pathname !== "/" && pathname !== "/login";
+  const showNavbarAndHeader = pathname !== "/" && pathname !== "/login" && !pathname.startsWith("/nexus");
 
   const [panel, setPanel] = useState<Panel>();
   const [isCollapsed, setIsCollapsed] = useState(true);

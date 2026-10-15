@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import { Send, Loader2, Sparkles, AlertCircle, Database, HelpCircle } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
 import { askNexus, AskResponse } from "@/lib/nexus/api";
 import { ProvenanceBadge } from "./ProvenanceBadge";
 
@@ -9,158 +8,123 @@ export interface AskPanelProps {
   onQuestionAnswered?: (res: AskResponse) => void;
 }
 
+const SAMPLES = [
+  "Where do we store user sessions?",
+  "Who maintains the session-store service?",
+  "What caused incident INC-77?",
+  "What decisions were superseded?",
+];
+
 export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
-  const [question, setQuestion] = useState("Where do we store user sessions?");
+  const [question, setQuestion] = useState(SAMPLES[0]);
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<AskResponse | null>({
-    answer:
-      "User sessions are stored in Postgres per ADR-042 (ratified on 2026-10-12 via ticket LIN-409). The earlier architectural decision to use Redis (DEC-017) was superseded after memory eviction dropped sessions during incident INC-77.",
-    confidence: 0.95,
-    current_sources: ["ADR-042 (2026-10-12) via LIN-409"],
-    superseded_sources: ["#eng-backend Slack Thread (2026-09-18) — Invalidated"],
-    intent: "decision_lookup",
-    trace_id: "trace_session_store_01",
-    cypher_queries: [
-      "MATCH (s:Service {name: 'session-store'})-[:HAS_DECISION]->(d:Decision {status: 'active'}) RETURN d",
-    ],
-    warnings: [],
-    run_id: "run_ask_initial",
-  });
+  const [response, setResponse] = useState<AskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const sampleQuestions = [
-    "Where do we store user sessions?",
-    "Who maintains the session-store service?",
-    "What caused incident INC-77?",
-    "What decisions were superseded?",
-  ];
-
-  const handleAsk = async (qToAsk?: string) => {
-    const q = (qToAsk || question).trim();
-    if (!q) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await askNexus(q);
-      setResponse(res);
-      if (onQuestionAnswered) {
-        onQuestionAnswered(res);
+  const ask = useCallback(
+    async (q: string) => {
+      const text = q.trim();
+      if (!text) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await askNexus(text);
+        setResponse(res);
+        onQuestionAnswered?.(res);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "The API did not answer. Check that it is running on port 8000.");
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to query NEXUS");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [onQuestionAnswered],
+  );
+
+  useEffect(() => {
+    ask(SAMPLES[0]);
+    // run once on mount so the panel opens with a real answer
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const decisionId = response?.answer.match(/\bDEC-\d+\b/)?.[0];
 
   return (
-    <div
-      data-testid="ask-panel"
-      className="h-full flex flex-col justify-between p-4 font-mono text-xs overflow-y-auto space-y-4 select-none bg-[#141414]"
-    >
-      <div className="space-y-4">
-        {/* Sample queries chips */}
-        <div>
-          <span className="text-[10px] tracking-widest uppercase text-zinc-500 font-semibold block mb-2">
-            FREQUENT QUERIES:
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {sampleQuestions.map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => {
-                  setQuestion(q);
-                  handleAsk(q);
-                }}
-                className="px-2 py-1 text-[10px] text-zinc-400 bg-[#0a0a0a] border border-[#27272a] hover:border-[#10b981]/50 hover:text-zinc-200 text-left transition-colors truncate max-w-full"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        </div>
+    <div data-testid="ask-panel" className="h-full flex flex-col gap-3 p-3 min-h-0">
+      <div className="flex flex-wrap gap-2">
+        {SAMPLES.map((q) => (
+          <button
+            key={q}
+            type="button"
+            className="nx-chip"
+            style={{ cursor: "pointer", fontSize: 16 }}
+            onClick={() => {
+              setQuestion(q);
+              ask(q);
+            }}
+          >
+            {q}
+          </button>
+        ))}
+      </div>
 
-        {/* Answer section */}
+      <div className="nx-scroll flex-1 min-h-0 flex flex-col gap-3 pr-1" aria-live="polite">
+        {loading && !response && <p style={{ color: "var(--nx-dim)" }}>Searching the graph…</p>}
+        {error && (
+          <p role="alert" style={{ color: "var(--nx-coral)" }}>
+            {error}
+          </p>
+        )}
         {response && (
-          <div className="space-y-3">
-            <div className="p-3 border border-[#10b981]/40 bg-[#10b981]/5 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#10b981]">
-                  <Sparkles size={12} />
-                  NEXUS SYNTHESIS
-                </span>
-                <span className="text-[10px] text-zinc-400">
-                  CONFIDENCE: <strong className="text-[#10b981]">{(response.confidence * 100).toFixed(0)}%</strong>
+          <>
+            <div className="p-3" style={{ background: "var(--nx-ink)", boxShadow: "inset 0 0 0 2px var(--nx-line)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="nx-display" style={{ color: "var(--nx-mint)" }}>Answer</span>
+                <span className="nx-chip">
+                  <span className="nx-dot" />
+                  {Math.round(response.confidence * 100)}% sure
                 </span>
               </div>
-              <p className="text-zinc-200 leading-relaxed text-[11px]">
-                {response.answer}
-              </p>
+              <p style={{ fontSize: 16, lineHeight: "22px" }}>{response.answer}</p>
             </div>
-
-            {/* Provenance Badge */}
             <ProvenanceBadge
               currentSource={response.current_sources[0]}
               supersededSource={response.superseded_sources[0]}
-              decisionId="DEC-021"
+              decisionId={decisionId}
             />
-
-            {/* Cypher Traces */}
             {response.cypher_queries?.length > 0 && (
-              <div className="p-2 border border-[#27272a] bg-[#0a0a0a]">
-                <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-zinc-500 mb-1">
-                  <Database size={10} />
-                  FalkorDB Cypher Trace
-                </span>
-                <code className="text-[10px] text-emerald-400/90 block overflow-x-auto whitespace-pre">
+              <details>
+                <summary className="nx-mono" style={{ cursor: "pointer", color: "var(--nx-sky)" }}>
+                  Cypher used
+                </summary>
+                <pre className="nx-mono nx-scroll mt-2 p-2" style={{ background: "var(--nx-ink)", fontSize: 16, whiteSpace: "pre-wrap" }}>
                   {response.cypher_queries[0]}
-                </code>
-              </div>
+                </pre>
+              </details>
             )}
-          </div>
-        )}
-
-        {error && (
-          <div className="p-2 border border-[#ef4444] bg-[#ef4444]/10 text-[#ef4444] text-[11px] flex items-center gap-1.5">
-            <AlertCircle size={14} className="shrink-0" />
-            <span>{error}</span>
-          </div>
+          </>
         )}
       </div>
 
-      {/* Input box */}
-      <div className="pt-2 border-t border-[#27272a]">
-        <label className="text-[10px] tracking-widest uppercase text-zinc-500 font-semibold block mb-1.5">
-          ASK COMPANY BRAIN
-        </label>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAsk();
-          }}
-          className="flex gap-1"
-        >
-          <input
-            type="text"
-            data-testid="ask-input"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask architecture, decisions, bus factor..."
-            className="flex-1 bg-[#0a0a0a] border border-[#27272a] px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-[#10b981] placeholder-zinc-600"
-          />
-          <button
-            type="submit"
-            data-testid="ask-submit"
-            disabled={loading}
-            className="px-4 py-2 bg-[#10b981] hover:bg-[#10b981]/90 text-black font-bold text-xs uppercase flex items-center gap-1 transition-colors"
-          >
-            {loading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-            <span>ASK</span>
-          </button>
-        </form>
-      </div>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(question);
+        }}
+      >
+        <label className="sr-only" htmlFor="nx-ask">Ask the company brain</label>
+        <input
+          id="nx-ask"
+          className="nx-input"
+          data-testid="ask-input"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Ask about a decision, owner or incident"
+        />
+        <button type="submit" className="nx-btn is-on" data-testid="ask-submit" disabled={loading}>
+          {loading ? "…" : "Ask"}
+        </button>
+      </form>
     </div>
   );
 }

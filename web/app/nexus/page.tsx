@@ -2,59 +2,35 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Terminal, Database, Activity, GitFork, RefreshCw, Layers } from "lucide-react";
-import { fetchTopology, runAudit, TopologyData, TopologyNode, AuditResponse } from "@/lib/nexus/api";
+import { fetchTopology, runAudit, TopologyData, TopologyNode } from "@/lib/nexus/api";
 import { AuditBar, AuditKind } from "@/components/nexus/AuditBar";
 import { LiveTopology } from "@/components/nexus/LiveTopology";
+import { OfficeFloor } from "@/components/nexus/OfficeFloor";
 import { IngestionStreams } from "@/components/nexus/IngestionStreams";
 import { AskPanel } from "@/components/nexus/AskPanel";
 import { NodeInspector } from "@/components/nexus/NodeInspector";
 import { SimulateSyncButton } from "@/components/nexus/SimulateSyncButton";
 
-// Initial synthetic topology fallback
-const fallbackTopology: TopologyData = {
-  nodes: [
-    { id: "arjun", name: "arjun", label: "Person", group: "Person", properties: { role: "Platform Eng", team: "platform" } },
-    { id: "priya", name: "priya", label: "Person", group: "Person", properties: { role: "Maintainer", team: "platform" } },
-    { id: "meera", name: "meera", label: "Person", group: "Person", properties: { role: "SRE On-Call", team: "sre" } },
-    { id: "kabir", name: "kabir", label: "Person", group: "Person", properties: { role: "Core Eng", team: "payments-core" } },
-    { id: "session-store", name: "session-store", label: "Service", group: "Service", properties: { tier: "1" } },
-    { id: "ledger", name: "ledger", label: "Service", group: "Service", properties: { tier: "1" } },
-    { id: "auth-gateway", name: "auth-gateway", label: "Service", group: "Service", properties: { tier: "1" } },
-    { id: "DEC-017", name: "DEC-017 (Redis)", label: "Decision", group: "Decision", properties: { status: "superseded", superseded_by: "DEC-021" } },
-    { id: "DEC-021", name: "DEC-021 (Postgres)", label: "Decision", group: "Decision", properties: { status: "active", supersedes: "DEC-017" } },
-    { id: "INC-77", name: "INC-77", label: "Incident", group: "Incident", properties: { severity: "SEV-1" } },
-    { id: "LIN-391", name: "LIN-391", label: "Ticket", group: "Ticket", properties: { title: "Migrate session store to Redis" } },
-    { id: "LIN-409", name: "LIN-409", label: "Ticket", group: "Ticket", properties: { title: "Ratify session store on Postgres" } },
-  ],
-  links: [
-    { id: "arjun_session", source: "arjun", target: "session-store", label: "OWNS", status: "active" },
-    { id: "priya_session", source: "priya", target: "session-store", label: "MAINTAINS", status: "active" },
-    { id: "kabir_ledger", source: "kabir", target: "ledger", label: "MAINTAINS", status: "active" },
-    { id: "session_dec17", source: "session-store", target: "DEC-017", label: "HAS_DECISION", status: "superseded" },
-    { id: "session_dec21", source: "session-store", target: "DEC-021", label: "HAS_DECISION", status: "active" },
-    { id: "dec21_dec17", source: "DEC-021", target: "DEC-017", label: "SUPERSEDES", status: "superseded" },
-    { id: "meera_inc77", source: "meera", target: "INC-77", label: "RESOLVED", status: "active" },
-  ],
-};
+const EMPTY: TopologyData = { nodes: [], links: [] };
 
 export default function NexusDashboard() {
-  const [topology, setTopology] = useState<TopologyData>(fallbackTopology);
+  const [topology, setTopology] = useState<TopologyData>(EMPTY);
+  const [online, setOnline] = useState<boolean | null>(null);
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const [activeAudit, setActiveAudit] = useState<AuditKind | null>(null);
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [auditCypher, setAuditCypher] = useState<string | null>(null);
-  const [inspectedNode, setInspectedNode] = useState<TopologyNode | null>(null);
-  const [activeTab, setActiveTab] = useState<"topology" | "ask" | "ownership">("topology");
+  const [inspected, setInspected] = useState<TopologyNode | null>(null);
+  const [view, setView] = useState<"office" | "graph">("office");
+  const [syncTick, setSyncTick] = useState(0);
 
   const loadTopology = useCallback(async () => {
     try {
       const data = await fetchTopology();
-      if (data && data.nodes && data.nodes.length > 0) {
-        setTopology(data);
-      }
+      setTopology(data);
+      setOnline(true);
     } catch {
-      // Keep fallback topology if backend is not yet populated
+      setOnline(false);
     }
   }, []);
 
@@ -62,35 +38,19 @@ export default function NexusDashboard() {
     loadTopology();
   }, [loadTopology]);
 
+  const handleSync = useCallback(() => {
+    loadTopology();
+    setSyncTick((t) => t + 1);
+  }, [loadTopology]);
+
   const handleRunAudit = async (kind: AuditKind) => {
     setActiveAudit(kind);
     setLoadingAudit(true);
     setAuditCypher(null);
-
     try {
-      const res: AuditResponse = await runAudit(kind);
+      const res = await runAudit(kind);
       setHighlightIds(res.highlight_ids || []);
       setAuditCypher(res.cypher || null);
-
-      // If audit returned nodes, merge or update topology
-      if (res.nodes && res.nodes.length > 0) {
-        setTopology((prev) => {
-          const nodeMap = new Map(prev.nodes.map((n) => [n.id, n]));
-          res.nodes.forEach((rawNode: any) => {
-            const nid = rawNode.id || String(rawNode.id || "");
-            if (nid && !nodeMap.has(nid)) {
-              nodeMap.set(nid, {
-                id: nid,
-                name: rawNode.name || rawNode.title || nid,
-                label: rawNode.label || "Entity",
-                group: rawNode.group || "Entity",
-                properties: rawNode.properties || {},
-              });
-            }
-          });
-          return { nodes: Array.from(nodeMap.values()), links: prev.links };
-        });
-      }
     } catch (err) {
       console.error("Audit failed:", err);
     } finally {
@@ -98,177 +58,149 @@ export default function NexusDashboard() {
     }
   };
 
-  return (
-    <div className="flex flex-col h-screen w-screen bg-[#0a0a0a] text-zinc-100 font-mono select-none overflow-hidden">
-      {/* Top HUD Telemetry Header */}
-      <header className="h-12 border-b border-[#27272a] bg-[#141414] px-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 bg-[#10b981] animate-pulse" />
-            <span className="text-xs font-bold tracking-widest uppercase text-[#10b981]">NEXUS</span>
-          </div>
-          <span className="text-[#27272a]">|</span>
-          <span className="text-[11px] tracking-widest uppercase text-zinc-300 hidden sm:inline">
-            Organizational Telemetry &amp; Decision Graph
-          </span>
-          <span className="text-[#27272a]">|</span>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] tracking-widest uppercase px-1.5 py-0.5 border border-[#10b981]/40 bg-[#10b981]/10 text-[#10b981]">
-              FALKORDB: UP
-            </span>
-            <span className="text-[10px] tracking-widest uppercase px-1.5 py-0.5 border border-[#f59e0b]/40 bg-[#f59e0b]/10 text-[#f59e0b]">
-              TRACK 03: COMPANY BRAIN
-            </span>
-          </div>
-        </div>
+  const clearAudit = () => {
+    setHighlightIds([]);
+    setActiveAudit(null);
+    setAuditCypher(null);
+  };
 
+  const decisions = topology.nodes.filter((n) => n.group === "Decision");
+  const dead = decisions.filter((n) => String(n.properties?.status) === "superseded").length;
+
+  return (
+    <div className="flex flex-col h-full">
+      <header className="flex items-center justify-between gap-4 px-5 py-3 shrink-0" style={{ borderBottom: "4px solid var(--nx-ink)", background: "var(--nx-panel)" }}>
+        <div className="flex items-center gap-4 min-w-0">
+          <h1 className="nx-display" style={{ fontSize: 14, color: "var(--nx-lemon)", margin: 0 }}>NEXUS</h1>
+          <span style={{ color: "var(--nx-dim)" }}>Company brain for Acme Payments</span>
+          <span className="nx-chip">
+            <span className={`nx-dot ${online === false ? "is-bad" : ""}`} />
+            {online === false ? "api offline" : online ? "graph online" : "connecting"}
+          </span>
+        </div>
         <div className="flex items-center gap-3">
-          <SimulateSyncButton onSyncCompleted={loadTopology} />
-          <Link
-            href="/graph"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#141414] border border-[#27272a] hover:border-zinc-500 text-zinc-300 hover:text-zinc-100 text-xs tracking-widest uppercase transition-colors"
-          >
-            <Terminal size={12} />
-            <span>Cypher Explorer</span>
+          <div className="flex gap-2" role="group" aria-label="View">
+            {(["office", "graph"] as const).map((v) => (
+              <button key={v} type="button" className="nx-btn" data-testid={`view-${v}`} aria-pressed={view === v} onClick={() => setView(v)}>
+                {v === "office" ? "Office" : "Graph"}
+              </button>
+            ))}
+          </div>
+          <SimulateSyncButton onSyncCompleted={handleSync} />
+          <Link href="/graph" className="nx-btn" style={{ textDecoration: "none" }}>
+            Cypher explorer
           </Link>
         </div>
       </header>
 
-      {/* Quick Audit Bar */}
-      <section className="h-11 border-b border-[#27272a] bg-[#0a0a0a] px-4 flex items-center justify-between shrink-0">
-        <AuditBar
-          activeAudit={activeAudit}
-          loadingAudit={loadingAudit}
-          onRunAudit={handleRunAudit}
-        />
-
-        {/* Tab switchers */}
-        <div className="flex items-center gap-1 border-l border-[#27272a] pl-3 shrink-0">
-          <button
-            type="button"
-            data-testid="tab-topology"
-            onClick={() => setActiveTab("topology")}
-            className={`px-3 py-1 text-[11px] tracking-widest uppercase border transition-colors ${
-              activeTab === "topology"
-                ? "border-[#10b981] text-[#10b981] bg-[#10b981]/10 font-bold"
-                : "border-[#27272a] text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            LIVE TOPOLOGY
-          </button>
-          <button
-            type="button"
-            data-testid="tab-ask"
-            onClick={() => setActiveTab("ask")}
-            className={`px-3 py-1 text-[11px] tracking-widest uppercase border transition-colors ${
-              activeTab === "ask"
-                ? "border-[#10b981] text-[#10b981] bg-[#10b981]/10 font-bold"
-                : "border-[#27272a] text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            ASK NEXUS
-          </button>
-          <button
-            type="button"
-            data-testid="tab-ownership"
-            onClick={() => {
-              setActiveTab("ownership");
-              handleRunAudit("who-owns-what");
-            }}
-            className={`px-3 py-1 text-[11px] tracking-widest uppercase border transition-colors ${
-              activeTab === "ownership"
-                ? "border-[#10b981] text-[#10b981] bg-[#10b981]/10 font-bold"
-                : "border-[#27272a] text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            OWNERSHIP MATRIX
-          </button>
-        </div>
-      </section>
-
-      {/* Main 3-Pane Tactical Layout */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Rail: Ingestion Streams */}
-        <IngestionStreams onEventReceived={() => loadTopology()} />
-
-        {/* Center: Live Company Topology / Active Tab */}
-        <main className="flex-1 flex flex-col bg-[#0a0a0a] relative overflow-hidden">
-          {/* Top Canvas Bar */}
-          <div className="p-2 border-b border-[#27272a] bg-[#141414] flex justify-between items-center text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold tracking-widest uppercase text-zinc-300">
-                Live Company Topology (FalkorDB multigraph)
+      <div className="flex items-center justify-between gap-4 px-5 py-3 shrink-0" style={{ background: "var(--nx-bg)" }}>
+        <AuditBar activeAudit={activeAudit} loadingAudit={loadingAudit} onRunAudit={handleRunAudit} />
+        <div className="flex items-center gap-3 min-w-0">
+          {activeAudit && (
+            <>
+              <span className="nx-chip">
+                {highlightIds.length} highlighted
               </span>
-              {activeAudit && (
-                <span className="text-[10px] px-2 py-0.5 border border-[#10b981]/40 bg-[#10b981]/10 text-[#10b981]">
-                  AUDIT: {activeAudit.toUpperCase()} ({highlightIds.length} highlighted)
-                </span>
+              {auditCypher && (
+                <code className="nx-mono truncate" style={{ color: "var(--nx-sky)", maxWidth: 520 }} title={auditCypher}>
+                  {auditCypher.replace(/\s+/g, " ")}
+                </code>
               )}
-            </div>
-            <div className="flex items-center gap-3 text-[11px] text-zinc-400">
-              <span>NODES: <strong className="text-zinc-200">{topology.nodes.length}</strong></span>
-              <span>LINKS: <strong className="text-zinc-200">{topology.links.length}</strong></span>
-              <span>HIGHLIGHTS: <strong className="text-[#f59e0b]">{highlightIds.length}</strong></span>
-            </div>
-          </div>
-
-          {/* Active Cypher snippet preview if an audit was run */}
-          {auditCypher && (
-            <div className="px-3 py-1.5 bg-[#0e0e11] border-b border-[#27272a] text-[10px] flex items-center justify-between text-zinc-400">
-              <span className="truncate max-w-[85%] font-mono text-emerald-400/90">
-                CYPHER: {auditCypher.replace(/\s+/g, " ").slice(0, 120)}...
-              </span>
-              <button
-                type="button"
-                onClick={() => setHighlightIds([])}
-                className="text-[10px] text-zinc-500 hover:text-zinc-300 underline"
-              >
-                Clear Highlights
+              <button type="button" className="nx-btn" onClick={clearAudit}>
+                Clear
               </button>
-            </div>
+            </>
           )}
+        </div>
+      </div>
 
-          {/* Force Graph Canvas View */}
-          <div className="flex-1 relative">
-            <LiveTopology
-              data={topology}
-              highlightIds={highlightIds}
-              onNodeClick={(node) => setInspectedNode(node)}
-            />
+      <div className="flex-1 min-h-0 grid gap-3 px-3 pb-2" style={{ gridTemplateColumns: "300px minmax(0, 1fr) 420px" }}>
+        <IngestionStreams refreshKey={syncTick} onEventReceived={() => undefined} />
 
-            {/* Node Inspector Drawer */}
-            <NodeInspector
-              node={inspectedNode}
-              onClose={() => setInspectedNode(null)}
-            />
+        <main className="nx-panel flex flex-col min-h-0 min-w-0" aria-label="Office floor">
+          <header className="nx-panel-head">
+            <span className="nx-display">{view === "office" ? "Floor 1" : "Decision graph"}</span>
+            <span className="flex gap-2">
+              <span className="nx-chip">{topology.nodes.length} things</span>
+              <span className="nx-chip">{topology.links.length} links</span>
+              <span className="nx-chip">
+                <span className="nx-dot is-bad" />
+                {dead} of {decisions.length} decisions replaced
+              </span>
+            </span>
+          </header>
+          <div className="relative flex-1 min-h-0">
+            {view === "office" ? (
+              <OfficeFloor data={topology} highlightIds={highlightIds} onNodeClick={setInspected} />
+            ) : (
+              <LiveTopology data={topology} highlightIds={highlightIds} onNodeClick={setInspected} />
+            )}
+            {online === false && (
+              <p role="alert" className="absolute inset-0 flex items-center justify-center text-center p-8" style={{ background: "rgba(7,12,16,.85)" }}>
+                The API is not answering. Start it on port 8000, then reload.
+              </p>
+            )}
+            {online && topology.nodes.length === 0 && (
+              <p className="absolute inset-0 flex items-center justify-center text-center p-8" style={{ background: "rgba(7,12,16,.85)" }}>
+                The graph is empty. Seed it with scripts/seed.py or replay the company sync.
+              </p>
+            )}
+            <NodeInspector node={inspected} onClose={() => setInspected(null)} />
           </div>
         </main>
 
-        {/* Right Rail: Ask NEXUS Panel */}
-        <aside className="w-84 md:w-96 border-l border-[#27272a] bg-[#141414] flex flex-col shrink-0">
-          <div className="p-3 border-b border-[#27272a] flex items-center justify-between">
-            <span className="text-xs font-semibold tracking-widest uppercase text-zinc-300">
-              Decision Provenance &amp; Synthesis
+        <aside className="nx-panel flex flex-col min-h-0" aria-label="Ask the company brain">
+          <header className="nx-panel-head">
+            <span className="nx-display">Ask the brain</span>
+            <span className="nx-chip">
+              <span className="nx-dot" />
+              answers cite sources
             </span>
-            <span className="text-[10px] text-[#10b981] flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-              ONLINE
-            </span>
-          </div>
-          <div className="flex-1 overflow-hidden">
+          </header>
+          <div className="flex-1 min-h-0">
             <AskPanel />
           </div>
+          <section aria-label="Decision ledger" style={{ borderTop: "4px solid var(--nx-ink)", maxHeight: 330 }} className="flex flex-col min-h-0">
+            <header className="nx-panel-head">
+              <span className="nx-display">Decision ledger</span>
+              <span className="nx-chip">{decisions.length - dead} live</span>
+            </header>
+            <ul className="nx-scroll nx-mono px-3 py-2" style={{ listStyle: "none", margin: 0 }}>
+              {[...decisions]
+                .sort((a, b) => String(b.properties?.decided_at).localeCompare(String(a.properties?.decided_at)))
+                .map((d) => {
+                  const old = String(d.properties?.status) === "superseded";
+                  return (
+                    <li key={d.id}>
+                      <button
+                        type="button"
+                        onClick={() => setInspected(d)}
+                        className="flex w-full justify-between gap-3 text-left"
+                        style={{ background: "none", border: 0, color: old ? "var(--nx-dim)" : "var(--nx-cream)", cursor: "pointer", padding: "2px 0", font: "inherit", textDecoration: old ? "line-through" : "none" }}
+                      >
+                        <span>{d.id}</span>
+                        <span style={{ textDecoration: "none", color: old ? "var(--nx-coral)" : "var(--nx-mint)" }}>
+                          {old ? `replaced by ${String(d.properties?.superseded_by ?? "?")}` : "live"}
+                        </span>
+                        <span style={{ color: "var(--nx-dim)", textDecoration: "none" }}>{String(d.properties?.decided_at ?? "").slice(5, 10)}</span>
+                      </button>
+                      <p style={{ margin: "0 0 6px", color: "var(--nx-dim)", fontSize: 16, lineHeight: "16px" }}>{String(d.properties?.summary ?? "").slice(0, 70)}</p>
+                    </li>
+                  );
+                })}
+            </ul>
+          </section>
         </aside>
       </div>
 
-      {/* Industrial Footer Status Bar */}
-      <footer className="h-6 border-t border-[#27272a] bg-[#141414] px-4 flex items-center justify-between text-[10px] text-zinc-500 shrink-0">
-        <div>NEXUS // REAL-TIME DECISION TELEMETRY // FALKORDB HACKATHON 2026</div>
-        <div className="flex gap-4">
-          <span>GRAPH: <span className="text-zinc-300">nexus_company</span></span>
-          <span>TEMPORAL: <span className="text-[#10b981]">VALIDATED</span></span>
-          <span>LATENCY: <span className="text-[#10b981]">12ms</span></span>
-        </div>
+      <footer className="flex items-center justify-between gap-6 px-5 py-2 shrink-0 nx-mono" style={{ borderTop: "4px solid var(--nx-ink)", background: "var(--nx-panel)", color: "var(--nx-dim)" }}>
+        <span className="flex items-center gap-5">
+          <span className="flex items-center gap-2"><i style={{ width: 14, height: 10, background: "#f1e6c3", boxShadow: "0 0 0 2px var(--nx-ink)" }} />live decision</span>
+          <span className="flex items-center gap-2"><i style={{ width: 14, height: 10, background: "#b9b39c", boxShadow: "0 0 0 2px var(--nx-coral)" }} />replaced decision</span>
+          <span className="flex items-center gap-2"><i style={{ width: 10, height: 10, background: "var(--nx-coral)" }} />open incident</span>
+          <span className="flex items-center gap-2"><i style={{ width: 10, height: 10, background: "var(--nx-sky)" }} />owner note</span>
+        </span>
+        <span>graphs: nexus_company · nexus_temporal · nexus_docs</span>
       </footer>
     </div>
   );

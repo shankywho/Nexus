@@ -148,3 +148,18 @@ export async function cancelSync(): Promise<{ status: string }> {
   }
   return res.json();
 }
+
+export interface SourceEvent {
+  id: string;
+  kind: string | null;
+  ts: string | null;
+  ingested_at: string | null;
+}
+
+export async function fetchSources(limit = 200): Promise<SourceEvent[]> {
+  const res = await fetch(`${BASE_URL}/sources?limit=${limit}`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch sources: ${res.statusText}`);
+  }
+  return res.json();
+}
