@@ -1,0 +1,135 @@
+[
+  {
+    "q": "Where do we store user sessions?",
+    "gold_answer_contains": [
+      "Postgres"
+    ],
+    "gold_current_source_ids": [
+      "ADR-042",
+      "LIN-409"
+    ],
+    "stale_trap_terms": [
+      "redis"
+    ]
+  },
+  {
+    "q": "Why did we stop using Redis for sessions?",
+    "gold_answer_contains": [
+      "INC-77",
+      "eviction"
+    ],
+    "gold_current_source_ids": [
+      "INC-77",
+      "PR-1184",
+      "ADR-042"
+    ],
+    "stale_trap_terms": []
+  },
+  {
+    "q": "Who owns the session store?",
+    "gold_answer_contains": [
+      "priya"
+    ],
+    "gold_current_source_ids": [
+      "session-store"
+    ],
+    "stale_trap_terms": []
+  },
+  {
+    "q": "Who is the only person who knows the ledger?",
+    "gold_answer_contains": [
+      "kabir"
+    ],
+    "gold_current_source_ids": [
+      "ledger"
+    ],
+    "stale_trap_terms": []
+  },
+  {
+    "q": "What is the current fraud scoring model decision?",
+    "gold_answer_contains": [
+      "DEC-026"
+    ],
+    "gold_current_source_ids": [
+      "DEC-026",
+      "ADR-045"
+    ],
+    "stale_trap_terms": [
+      "dec-024",
+      "heuristic"
+    ]
+  },
+  {
+    "q": "Which decisions were superseded this quarter?",
+    "gold_answer_contains": [
+      "DEC-017",
+      "DEC-024"
+    ],
+    "gold_current_source_ids": [
+      "DEC-021",
+      "DEC-026"
+    ],
+    "stale_trap_terms": [
+      "partition pruning",
+      "fiscal quarter"
+    ]
+  },
+  {
+    "q": "Trace the decision behind PR-1184",
+    "gold_answer_contains": [
+      "DEC-017",
+      "LIN-391",
+      "INC-77"
+    ],
+    "gold_current_source_ids": [
+      "PR-1184",
+      "INC-77",
+      "DEC-017"
+    ],
+    "stale_trap_terms": [
+      "trial redis"
+    ]
+  },
+  {
+    "q": "Is ADR-038 still valid?",
+    "gold_answer_contains": [
+      "no",
+      "superseded",
+      "ADR-042"
+    ],
+    "gold_current_source_ids": [
+      "ADR-042",
+      "DEC-021"
+    ],
+    "stale_trap_terms": [
+      "move sessions to redis",
+      "redis"
+    ]
+  },
+  {
+    "q": "Who should review a change to auth-gateway?",
+    "gold_answer_contains": [
+      "arjun",
+      "vikram"
+    ],
+    "gold_current_source_ids": [
+      "auth-gateway"
+    ],
+    "stale_trap_terms": []
+  },
+  {
+    "q": "What changed about sessions since September?",
+    "gold_answer_contains": [
+      "Redis",
+      "Postgres"
+    ],
+    "gold_current_source_ids": [
+      "ADR-038",
+      "ADR-042"
+    ],
+    "stale_trap_terms": [
+      "lin-391",
+      "migrate session store to redis"
+    ]
+  }
+]

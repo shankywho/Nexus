@@ -1,0 +1,94 @@
+{
+  "teams": [
+    { "id": "platform", "name": "Platform Infrastructure" },
+    { "id": "payments-core", "name": "Core Payments & Ledger" },
+    { "id": "growth", "name": "Growth & Checkout Experience" },
+    { "id": "sre", "name": "Site Reliability & Observability" }
+  ],
+  "people": [
+    {
+      "id": "arjun",
+      "name": "Arjun Mehta",
+      "role": "Staff Platform Engineer",
+      "team_id": "platform",
+      "email_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "priya",
+      "name": "Priya Sharma",
+      "role": "Principal Systems Engineer",
+      "team_id": "platform",
+      "email_hash": "c85d7b57954a2a3e1dfb0cb9010c793ff8bb5ec047bf841eb93adab0199e8d47"
+    },
+    {
+      "id": "meera",
+      "name": "Meera Patel",
+      "role": "Senior SRE (Incident Lead)",
+      "team_id": "sre",
+      "email_hash": "5d41402abc4b2a76b9719d911017c592a34863f6834baf57a9f731a556391456"
+    },
+    {
+      "id": "kabir",
+      "name": "Kabir Rao",
+      "role": "Staff Ledger Architect",
+      "team_id": "payments-core",
+      "email_hash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+    },
+    {
+      "id": "vikram",
+      "name": "Vikram Desai",
+      "role": "Senior Platform Engineer",
+      "team_id": "platform",
+      "email_hash": "8277e0910d750195b448797616e091ad46b38c227e7d69b917540a97eb7fb20f"
+    },
+    {
+      "id": "ananya",
+      "name": "Ananya Joshi",
+      "role": "Staff ML / Risk Engineer",
+      "team_id": "payments-core",
+      "email_hash": "0a89d70fae41e57c6b75f8f946804bbff995c721ffab0c679a6136cf0f49c095"
+    },
+    {
+      "id": "rohan",
+      "name": "Rohan Verma",
+      "role": "Senior Payments Engineer",
+      "team_id": "payments-core",
+      "email_hash": "9e8a4a03e1b764b8cb6a26df8596fcf237785eb3d11b3337f7c4613ff558e8b0"
+    },
+    {
+      "id": "sarah",
+      "name": "Sarah Chen",
+      "role": "Lead Frontend / Checkout Engineer",
+      "team_id": "growth",
+      "email_hash": "1f8252277d544062c3e1e695d3a669ff842c3fa5334c4f9cc1e7eb68b323ec81"
+    },
+    {
+      "id": "david",
+      "name": "David Kim",
+      "role": "Senior Fullstack Engineer",
+      "team_id": "growth",
+      "email_hash": "7c4a8d09ca3762af61e59520943dc26494f8941b"
+    },
+    {
+      "id": "aisha",
+      "name": "Aisha Khan",
+      "role": "Observability Engineer",
+      "team_id": "sre",
+      "email_hash": "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca7"
+    },
+    {
+      "id": "leo",
+      "name": "Leo Martinez",
+      "role": "DevOps Engineer",
+      "team_id": "platform",
+      "email_hash": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+    },
+    {
+      "id": "maya",
+      "name": "Maya Singh",
+      "role": "Backend Engineer",
+      "team_id": "payments-core",
+      "email_hash": "2c6a46e64d1a6464f1d93264ff6e36d531a780b621f2bb502f901197779bc9fa"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+import { interactWhenVisible, waitForElementToBeEnabled } from "@/e2e/infra/utils";
+import { Locator } from "@playwright/test";
+import GraphPage from "./graphPage";
+
+export default class TableView extends GraphPage {
+
+    private get tableViewTab(): Locator {
+        return this.page.getByTestId("tableTab");
+    }
+
+    private get tableViewTabPanel(): Locator {
+        return this.page.getByRole('tabpanel', { name: 'Table' });
+    }
+
+    private get tableViewTableRows(): Locator {
+        return this.tableViewTabPanel.locator('tbody tr');
+    }
+
+    public async clickTableViewTab(): Promise<void> {
+        await interactWhenVisible(this.tableViewTab, async (el: Locator) => {
+            await el.click();
+        }, 'Table View Tab');
+    }
+
+    public async GetIsTableViewTabEnabled(): Promise<boolean> {
+        const isEnabled = await waitForElementToBeEnabled(this.tableViewTab);
+        return isEnabled;
+    }
+
+    public async GetIsTableViewTabSelected(): Promise<boolean> {
+        await waitForElementToBeEnabled(this.tableViewTab);
+        const isSelected = await this.tableViewTabPanel.getAttribute('data-state') === 'active';
+        return isSelected;
+    }
+
+    public async getRowsCount(): Promise<number> {
+        await this.tableViewTabPanel.waitFor({ state: 'visible', timeout: 10000 });
+        const rows = await this.tableViewTableRows.count();
+        return rows;
+    }
+
+    private get exportTableViewButton(): Locator {
+        return this.page.getByTestId("exportTableViewButton");
+    }
+
+    public async isExportButtonVisible(): Promise<boolean> {
+        try {
+            await this.exportTableViewButton.waitFor({ state: 'visible', timeout: 5000 });
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    public async clickExportButton(): Promise<void> {
+        await interactWhenVisible(this.exportTableViewButton, async (el: Locator) => {
+            await el.click();
+        }, 'Export Table View Button');
+    }
+
+    private get expandAllCellsButton(): Locator {
+        return this.tableViewTabPanel.getByRole('button', { name: 'Expand All' }).first();
+    }
+
+    /**
+     * Expands every JSON-tree cell in the table so nested keys (e.g. a PATH
+     * value's `nodes`/`edges`) become visible for text assertions. Object cells
+     * render collapsed by default (showing only "N keys").
+     */
+    public async expandAllCells(): Promise<void> {
+        await interactWhenVisible(this.expandAllCellsButton, async (el: Locator) => {
+            await el.click();
+        }, 'Table Expand All Cells');
+    }
+
+    /**
+     * Returns true if the first data cell in the first table row contains `text`.
+     * For PATH results the JSONTree renders nodes/edges keys, so checking for
+     * `'nodes'` or `'edges'` confirms the cell holds a PATH value.
+     *
+     * The first `<td>` is the row-index column (e.g. "1."), so the first data
+     * cell is `td` index 1. Call `expandAllCells()` first so nested keys render.
+     */
+    public async firstCellContains(text: string): Promise<boolean> {
+        await this.tableViewTabPanel.waitFor({ state: 'visible', timeout: 10000 });
+        const firstCell = this.tableViewTableRows.first().locator('td').nth(1);
+        await firstCell.waitFor({ state: 'visible', timeout: 5000 });
+        const content = await firstCell.textContent();
+        return (content ?? '').includes(text);
+    }
+}

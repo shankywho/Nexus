@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NEXUS // Telemetry & Observability Console</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0a0a0a;
+      color: #e4e4e7;
+      font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background-color: #141414;
+      border-bottom: 1px solid #27272a;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #10b981;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand span { color: #71717a; font-weight: 400; }
+    .btn-group { display: flex; gap: 8px; align-items: center; }
+    button {
+      background-color: #18181b;
+      color: #e4e4e7;
+      border: 1px solid #27272a;
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    button:hover { background-color: #27272a; border-color: #3f3f46; color: #fff; }
+    button.primary { background-color: #064e3b; border-color: #059669; color: #6ee7b7; }
+    button.primary:hover { background-color: #047857; color: #fff; }
+    button.danger { background-color: #450a0a; border-color: #dc2626; color: #fca5a5; }
+    button.danger:hover { background-color: #991b1b; color: #fff; }
+
+    main {
+      display: grid;
+      grid-template-columns: 320px 1fr 380px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .panel {
+      border-right: 1px solid #27272a;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .panel:last-child { border-right: none; }
+    .panel-header {
+      background-color: #141414;
+      border-bottom: 1px solid #27272a;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #a1a1aa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    /* Event stream items */
+    .event-item {
+      padding: 8px 10px;
+      border: 1px solid #27272a;
+      background-color: #111113;
+      margin-bottom: 8px;
+      font-size: 11px;
+      word-break: break-all;
+    }
+    .event-item.ingest { border-left: 3px solid #3b82f6; }
+    .event-item.temporal { border-left: 3px solid #8b5cf6; }
+    .event-item.decision { border-left: 3px solid #ef4444; }
+    .event-item.sync { border-left: 3px solid #f59e0b; }
+    .event-item.ask { border-left: 3px solid #10b981; }
+    .event-item.error { border-left: 3px solid #ef4444; background-color: #260a0a; }
+
+    .event-type {
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .event-time { color: #71717a; font-weight: 400; }
+
+    /* Waterfall */
+    .waterfall-step {
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid #27272a;
+      background-color: #141414;
+    }
+    .step-title {
+      font-weight: 600;
+      color: #60a5fa;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .bar-wrap {
+      background-color: #27272a;
+      height: 6px;
+      width: 100%;
+      margin: 6px 0;
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .bar {
+      height: 100%;
+      background-color: #10b981;
+    }
+    .step-preview {
+      font-size: 11px;
+      color: #a1a1aa;
+      background-color: #0d0d0f;
+      padding: 6px;
+      border: 1px solid #1f1f23;
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
+
+    /* Right pane Cypher / Facts */
+    pre {
+      background-color: #111113;
+      border: 1px solid #27272a;
+      padding: 8px;
+      font-size: 11px;
+      color: #fbbf24;
+      white-space: pre-wrap;
+      margin-bottom: 12px;
+    }
+    .fact-card {
+      padding: 8px;
+      border: 1px solid #27272a;
+      background-color: #141414;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+    .fact-valid { color: #10b981; }
+    .fact-invalid { color: #ef4444; text-decoration: line-through; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 10px;
+      text-transform: uppercase;
+      border-radius: 2px;
+    }
+    .status-active { background-color: #064e3b; color: #6ee7b7; }
+    .status-superseded { background-color: #450a0a; color: #fca5a5; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      NEXUS <span>// Organizational Telemetry & Observability</span>
+    </div>
+    <div class="btn-group">
+      <button class="primary" onclick="triggerSimulateSync()">▶ Simulate Sync</button>
+      <button onclick="runAudit('who-owns-what')">Who Owns What</button>
+      <button onclick="runAudit('decision-trace')">Decision Trace</button>
+      <button onclick="runAudit('stale-knowledge')">Stale Knowledge</button>
+      <button onclick="runAudit('bus-factor')">Bus Factor</button>
+      <button class="danger" onclick="triggerReset()">Reset Graphs</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left: Live Event Stream -->
+    <section class="panel">
+      <div class="panel-header">
+        <span>SSE Event Stream</span>
+        <span id="sse-status" style="color: #10b981;">● Connected</span>
+      </div>
+      <div class="panel-content" id="events-container">
+        <!-- Live events appended here -->
+      </div>
+    </section>
+
+    <!-- Middle: Waterfall Telemetry -->
+    <section class="panel">
+      <div class="panel-header">
+        <span>Run Waterfall & Latency</span>
+        <span id="active-run-id" style="color: #71717a;">run: none</span>
+      </div>
+      <div class="panel-content" id="waterfall-container">
+        <div style="color: #71717a; text-align: center; margin-top: 40px;">
+          Trigger an audit, ask question, or sync replay to inspect execution trace steps.
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Cypher & Temporal Invalidation -->
+    <section class="panel">
+      <div class="panel-header">
+        <span>Cypher Inspector & Temporal Facts</span>
+      </div>
+      <div class="panel-content">
+        <div style="font-size: 11px; font-weight: 700; color: #a1a1aa; margin-bottom: 6px;">LAST CYPHER EXECUTED</div>
+        <pre id="cypher-box">MATCH (d:Decision)-[:SUPERSEDES]->(old) RETURN d, old</pre>
+
+        <div style="font-size: 11px; font-weight: 700; color: #a1a1aa; margin: 16px 0 6px 0;">BI-TEMPORAL INVALIDATION MATRIX</div>
+        <div id="facts-container">
+          <div class="fact-card">
+            <div><strong>session-store</strong> STORED_IN <strong>Postgres</strong></div>
+            <div class="fact-valid">✓ Valid: 2026-10-02 → present</div>
+          </div>
+          <div class="fact-card">
+            <div><strong>session-store</strong> STORED_IN <strong>Redis</strong></div>
+            <div class="fact-invalid">✗ Valid: 2026-09-18 → Invalidated: 2026-10-02 (INC-77)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const eventsContainer = document.getElementById('events-container');
+    const waterfallContainer = document.getElementById('waterfall-container');
+    const cypherBox = document.getElementById('cypher-box');
+    const activeRunLabel = document.getElementById('active-run-id');
+
+    // Connect to live SSE stream
+    const evtSource = new EventSource('/api/events/stream');
+    evtSource.onmessage = (e) => appendEvent('message', e.data);
+
+    ['ingest.received', 'ingest.projected', 'temporal.episode_added', 'decision.superseded', 'sync.progress', 'graph.delta', 'ask.step', 'ask.completed', 'step.error'].forEach(type => {
+      evtSource.addEventListener(type, (e) => {
+        appendEvent(type, e.data);
+      });
+    });
+
+    evtSource.onerror = () => {
+      document.getElementById('sse-status').textContent = '○ Reconnecting';
+      document.getElementById('sse-status').style.color = '#f59e0b';
+    };
+    evtSource.onopen = () => {
+      document.getElementById('sse-status').textContent = '● Connected';
+      document.getElementById('sse-status').style.color = '#10b981';
+    };
+
+    function appendEvent(type, rawData) {
+      const data = JSON.parse(rawData || '{}');
+      const item = document.createElement('div');
+      item.className = 'event-item ' + (type.split('.')[0] || 'info');
+      const timeStr = new Date().toLocaleTimeString();
+
+      item.innerHTML = `
+        <div class="event-type">
+          <span>${type}</span>
+          <span class="event-time">${timeStr}</span>
+        </div>
+        <div>${JSON.stringify(data).slice(0, 180)}</div>
+      `;
+      eventsContainer.insertBefore(item, eventsContainer.firstChild);
+
+      if (data.run_id) {
+        activeRunLabel.textContent = data.run_id;
+        fetchRunDetails(data.run_id);
+      }
+    }
+
+    async function fetchRunDetails(runId) {
+      try {
+        const resp = await fetch(`/api/runs/${runId}`);
+        if (!resp.ok) return;
+        const run = await resp.json();
+        renderWaterfall(run);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderWaterfall(run) {
+      waterfallContainer.innerHTML = '';
+      if (!run.steps || run.steps.length === 0) {
+        waterfallContainer.innerHTML = `<div style="color: #71717a;">Run ${run.id} (${run.kind}) status: ${run.status}</div>`;
+        return;
+      }
+      run.steps.forEach(step => {
+        const div = document.createElement('div');
+        div.className = 'waterfall-step';
+        const lat = step.latency_ms || 1;
+        const widthPct = Math.min(100, Math.max(5, lat * 2));
+        div.innerHTML = `
+          <div class="step-title">
+            <span>${step.node}</span>
+            <span style="color: #a1a1aa;">${lat}ms [${step.status}]</span>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar" style="width: ${widthPct}%;"></div>
+          </div>
+          ${step.output_preview ? `<div class="step-preview">${step.output_preview}</div>` : ''}
+        `;
+        waterfallContainer.appendChild(div);
+
+        if (step.cypher) {
+          cypherBox.textContent = step.cypher;
+        }
+      });
+    }
+
+    async function runAudit(name) {
+      try {
+        const resp = await fetch(`/api/audits/${name}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await resp.json();
+        if (data.cypher) cypherBox.textContent = data.cypher;
+        if (data.run_id) fetchRunDetails(data.run_id);
+      } catch (err) {
+        alert('Audit failed: ' + err);
+      }
+    }
+
+    async function triggerSimulateSync() {
+      try {
+        const resp = await fetch('/api/sync/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interval_ms: 400 })
+        });
+        const data = await resp.json();
+        if (data.run_id) fetchRunDetails(data.run_id);
+      } catch (err) {
+        alert('Sync error: ' + err);
+      }
+    }
+
+    async function triggerReset() {
+      if (!confirm('Drop all nexus_* graphs and reset traces?')) return;
+      try {
+        await fetch('/api/admin/reset', { method: 'POST' });
+        alert('Graphs and traces reset.');
+        location.reload();
+      } catch (err) {
+        alert('Reset failed: ' + err);
+      }
+    }
+
+    // Refresh temporal facts
+    async function loadFacts() {
+      try {
+        const resp = await fetch('/api/graph/temporal/edges');
+        const facts = await resp.json();
+        if (facts && facts.length > 0) {
+          const container = document.getElementById('facts-container');
+          container.innerHTML = '';
+          facts.slice(0, 10).forEach(f => {
+            const card = document.createElement('div');
+            card.className = 'fact-card';
+            const isInvalid = f.invalid_at != null;
+            card.innerHTML = `
+              <div><strong>${f.subject || ''}</strong> ${f.predicate || ''} <strong>${f.object || ''}</strong></div>
+              <div class="${isInvalid ? 'fact-invalid' : 'fact-valid'}">
+                ${isInvalid ? `✗ Invalidated: ${f.invalid_at}` : `✓ Valid: ${f.valid_at || 'Active'}`}
+              </div>
+            `;
+            container.appendChild(card);
+          });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadFacts();
+  </script>
+</body>
+</html>

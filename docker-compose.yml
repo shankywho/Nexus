@@ -1,0 +1,62 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    container_name: nexus-falkordb
+    ports:
+      - "6379:6379"
+    volumes:
+      - falkordb_data:/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: nexus-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    environment:
+      - FALKORDB_HOST=falkordb
+      - FALKORDB_PORT=6379
+      - MOCK_EXTERNALS=true
+      - NEXUS_ORG_ID=acme
+    depends_on:
+      - falkordb
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: nexus-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=dev-only-change-me
+      - NEXUS_API_URL=http://api:8000
+      - NEXT_PUBLIC_DEFAULT_FALKOR_HOST=falkordb
+      - NEXT_PUBLIC_DEFAULT_FALKOR_PORT=6379
+    depends_on:
+      - api
+      - falkordb
+    restart: unless-stopped
+
+  mcp:
+    image: falkordb/mcpserver:latest
+    container_name: nexus-mcp
+    ports:
+      - "8080:8080"
+    environment:
+      - FALKORDB_HOST=falkordb
+      - FALKORDB_PORT=6379
+      - MCP_TRANSPORT=http
+      - MCP_PORT=8080
+    depends_on:
+      - falkordb
+    restart: unless-stopped
+
+volumes:
+  falkordb_data:

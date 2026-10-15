@@ -1,0 +1,32 @@
+# Environment and secret files
+.env
+.env.local
+.env.*.local
+
+# Runtime storage and caches
+var/
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node & Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/build/
+node_modules/
+
+# OS and logs
+.DS_Store
+Thumbs.db
+*.log

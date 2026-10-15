@@ -1,0 +1,91 @@
+{
+  "services": [
+    {
+      "id": "session-store",
+      "name": "Session Store",
+      "tier": 1,
+      "team_id": "platform",
+      "maintainer_ids": ["priya"],
+      "description": "Distributed session management and token caching service"
+    },
+    {
+      "id": "auth-gateway",
+      "name": "Auth Gateway",
+      "tier": 1,
+      "team_id": "platform",
+      "maintainer_ids": ["arjun", "vikram"],
+      "description": "Edge API routing, mTLS termination, and JWT authentication"
+    },
+    {
+      "id": "ledger",
+      "name": "Core Banking Ledger",
+      "tier": 1,
+      "team_id": "payments-core",
+      "maintainer_ids": ["kabir"],
+      "description": "Double-entry immutable balance transaction ledger"
+    },
+    {
+      "id": "payouts",
+      "name": "Payouts Engine",
+      "tier": 1,
+      "team_id": "payments-core",
+      "maintainer_ids": ["rohan"],
+      "description": "Disbursement pipeline for ACH, RTP, and international wires"
+    },
+    {
+      "id": "fraud-scorer",
+      "name": "Fraud & Risk Scorer",
+      "tier": 2,
+      "team_id": "payments-core",
+      "maintainer_ids": ["ananya"],
+      "description": "Real-time decision service evaluating payment risk scores"
+    },
+    {
+      "id": "notifications",
+      "name": "Notification Dispatcher",
+      "tier": 2,
+      "team_id": "growth",
+      "maintainer_ids": ["david"],
+      "description": "Transactional emails, SMS alerts, and webhook deliveries"
+    },
+    {
+      "id": "web-checkout",
+      "name": "Web Checkout Frontend",
+      "tier": 1,
+      "team_id": "growth",
+      "maintainer_ids": ["sarah"],
+      "description": "Hosted checkout page and embedded payment elements"
+    },
+    {
+      "id": "metrics-pipeline",
+      "name": "Telemetry & Metrics Pipeline",
+      "tier": 2,
+      "team_id": "sre",
+      "maintainer_ids": ["aisha", "meera"],
+      "description": "OpenTelemetry collector and timeseries aggregation cluster"
+    }
+  ],
+  "projects": [
+    {
+      "id": "session-v2",
+      "name": "High-Throughput Session Architecture",
+      "status": "active",
+      "team_id": "platform",
+      "owner_id": "arjun"
+    },
+    {
+      "id": "pci-compliance",
+      "name": "PCI-DSS 4.0 Attestation",
+      "status": "active",
+      "team_id": "payments-core",
+      "owner_id": "kabir"
+    },
+    {
+      "id": "realtime-disputes",
+      "name": "Instant Dispute Resolution Flow",
+      "status": "active",
+      "team_id": "growth",
+      "owner_id": "sarah"
+    }
+  ]
+}

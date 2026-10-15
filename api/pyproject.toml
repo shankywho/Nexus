@@ -1,0 +1,40 @@
+[project]
+name = "nexus-api"
+version = "0.1.0"
+description = "NEXUS API - Organizational Telemetry & Decision Graph"
+readme = "README.md"
+authors = [
+    { name = "Shankar Pratap Singh" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "falkordb>=1.8.0",
+    "fastapi>=0.143.1",
+    "graphiti-core[falkordb]>=0.30.2",
+    "graphrag-sdk>=1.4.0",
+    "httpx>=0.28.1",
+    "mypy>=2.4.0",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "rank-bm25>=0.2.2",
+    "ruff>=0.17.0",
+    "uvicorn>=0.54.0",
+    "python-multipart>=0.0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+pythonpath = [".", ".."]
+asyncio_mode = "auto"
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff.lint]
+ignore = ["BLE001", "ASYNC230", "FURB162"]
