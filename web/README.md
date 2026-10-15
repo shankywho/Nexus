@@ -1,9 +1,10 @@
 # NEXUS Web
 
-Next.js app that renders the NEXUS office floor at `/nexus`. `/` redirects there. `web/` started as a fork of FalkorDB Browser; see [../MODIFICATIONS.md](../MODIFICATIONS.md).
+Next.js app. `/` is the landing page and `/nexus` is the office. `web/` started as a fork of FalkorDB Browser; see [../MODIFICATIONS.md](../MODIFICATIONS.md).
 
 | Path | Purpose |
 |---|---|
+| `app/page.tsx`, `app/landing.css`, `components/landing/` | Landing page and its replay scene |
 | `app/nexus/page.tsx` | Page layout: audits, floor, mail room, ask panel, decision ledger |
 | `app/nexus/nexus.css` | Pixel theme tokens and base components |
 | `components/nexus/` | `OfficeFloor`, `LiveTopology`, `AskPanel`, `IngestionStreams`, `NodeInspector`, `ProvenanceBadge`, `AuditBar`, `SimulateSyncButton` |

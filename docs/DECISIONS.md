@@ -149,7 +149,7 @@ open http://localhost:3000/nexus
 
 ## D-011 Remove the Upstream Browser and Authentication
 - **Context:** `web/` began as a fork of FalkorDB Browser (D-002). Its graph explorer, settings, UDF, connection manager and NextAuth login were unused by the NEXUS HUD and added several hundred files and dependencies.
-- **Choice:** Deleted the upstream app, API routes, auth, token storage and tests. `web/` now holds only the NEXUS HUD (`/nexus`). `/` redirects to `/nexus`. The Cypher explorer link is gone.
+- **Choice:** Deleted the upstream app, API routes, auth, token storage and tests. `web/` now holds only the NEXUS HUD (`/nexus`). `/` was a redirect to `/nexus` and is now the landing page. The Cypher explorer link is gone.
 - **Why:** Smaller attack surface, faster builds, and a repo that shows only original work.
 - **Trade-off:** The app has no user login. Run it behind an auth proxy before exposing it. FalkorDB can still be inspected with `redis-cli`, the MCP server on port 8080, or the API `/debug` page.
 - **How to undo:** `git revert` the removal commit.
