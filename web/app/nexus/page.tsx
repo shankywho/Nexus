@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { fetchTopology, runAudit, TopologyData, TopologyNode } from "@/lib/nexus/api";
 import { AuditBar, AuditKind } from "@/components/nexus/AuditBar";
 import { LiveTopology } from "@/components/nexus/LiveTopology";
@@ -87,9 +86,6 @@ export default function NexusDashboard() {
             ))}
           </div>
           <SimulateSyncButton onSyncCompleted={handleSync} />
-          <Link href="/graph" className="nx-btn" style={{ textDecoration: "none" }}>
-            Cypher explorer
-          </Link>
         </div>
       </header>
 

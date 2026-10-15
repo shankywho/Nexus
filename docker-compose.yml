@@ -30,18 +30,13 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        NEXUS_API_URL: http://api:8000
     container_name: nexus-web
     ports:
       - "3000:3000"
-    environment:
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=dev-only-change-me
-      - NEXUS_API_URL=http://api:8000
-      - NEXT_PUBLIC_DEFAULT_FALKOR_HOST=falkordb
-      - NEXT_PUBLIC_DEFAULT_FALKOR_PORT=6379
     depends_on:
       - api
-      - falkordb
     restart: unless-stopped
 
   mcp:

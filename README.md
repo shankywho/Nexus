@@ -25,14 +25,14 @@ Flat vector search over team history returns superseded answers. A migration to 
 ```
 .
 ├── api/            FastAPI service (nexus_api/), unit and integration tests
-├── web/            Next.js HUD, forked from FalkorDB Browser v2.3.1
+├── web/            Next.js office HUD (/nexus)
 ├── fixtures/       Synthetic Acme Payments data: events, people, services, docs, gold questions
 ├── scripts/        Seed, replay, evaluate and reset tooling
 ├── docs/           Architecture, API, decisions, contract checks, build spec
 ├── .github/        CI workflow
 ├── docker-compose.yml
 ├── Makefile
-└── MODIFICATIONS.md  Notice of changes to the upstream FalkorDB Browser (ELv2)
+└── MODIFICATIONS.md  History note on the removed upstream FalkorDB Browser code
 ```
 
 ## Quickstart
@@ -83,8 +83,8 @@ All settings are environment variables. See [`.env.example`](.env.example).
 | `FALKORDB_HOST` / `FALKORDB_PORT` | `localhost` / `6379` | Graph database. |
 | `OPENAI_API_KEY` / `GOOGLE_API_KEY` | empty | Needed only when `MOCK_EXTERNALS=false`. |
 | `ADMIN_TOKEN` | `change-me` | Guards destructive routes. **Change it outside local development.** |
+| `NEXUS_API_URL` | `http://localhost:8000` | API address the web app proxies to. Set at build time in Docker. |
 | `CORS_ORIGINS` | `http://localhost:3000` | Allowed browser origins. |
-| `NEXTAUTH_SECRET` | `dev-only-change-me` | Web session secret. **Change it outside local development.** |
 
 ## Benchmark
 
@@ -116,7 +116,7 @@ Latency figures come from a local run in mock mode.
 - People nodes store `email_hash`, not plaintext email.
 - `DELETE /api/sources/{event_id}` erases a source event and nodes derived only from it, and tombstones matching temporal facts.
 - API keys and bearer tokens are masked in logs and stored run previews.
-- Default `ADMIN_TOKEN` and `NEXTAUTH_SECRET` are development placeholders.
+- The default `ADMIN_TOKEN` is a development placeholder. There is no user login: put the app behind your own auth proxy before exposing it.
 
 ## Limitations
 
@@ -126,6 +126,6 @@ Latency figures come from a local run in mock mode.
 
 ## Built on
 
-- [FalkorDB Browser](https://github.com/FalkorDB/falkordb-browser) v2.3.1 (SSPL / ELv2), modified in `web/`. Changes are listed in [MODIFICATIONS.md](MODIFICATIONS.md). The upstream [LICENSE](web/LICENSE.txt) is unchanged.
+- `web/` started as a fork of [FalkorDB Browser](https://github.com/FalkorDB/falkordb-browser) v2.3.1 (ELv2 / SSPL). The upstream code has since been removed; see [MODIFICATIONS.md](MODIFICATIONS.md). The upstream [LICENSE](web/LICENSE.txt) is kept.
 - UI design language (chunky pixel panels, three-font pixel type system) is inspired by [Munder Difflin](https://github.com/HarnessMD/munder-difflin) (MIT), used with the author's permission. No code or art assets were copied. Fonts: Press Start 2P, Pixelify Sans and VT323 (SIL OFL) via `@fontsource`.
 - [FalkorDB](https://github.com/FalkorDB/FalkorDB), [Graphiti](https://github.com/getzep/graphiti) (Apache-2.0), [GraphRAG-SDK](https://github.com/FalkorDB/GraphRAG-SDK), [react-force-graph](https://github.com/vasturiano/react-force-graph).

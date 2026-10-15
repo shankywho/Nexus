@@ -4,12 +4,11 @@
 
 ```mermaid
 flowchart TD
-    subgraph UI ["Frontend // Tactical Telemetry HUD (Next.js 16)"]
-        Topology["Live Company Topology\n(react-force-graph-2d)"]
-        AuditBar["4 Quick Audits\n(Hotspots, Stale, Bus Factor, Gaps)"]
+    subgraph UI ["Frontend // Office HUD (Next.js 16)"]
+        Office["Office floor + graph view\n(SVG, react-force-graph-2d)"]
+        AuditBar["4 Audits\n(Who owns what, Decision trace,\nStale knowledge, Bus factor)"]
         AskHUD["Ask Panel &\nProvenance Badge"]
         SimulateBtn["Simulate Sync\n(SSE Real-Time Stream)"]
-        CypherConsole["FalkorDB Cypher\nBrowser (Forked Engine)"]
     end
 
     subgraph API ["Backend // FastAPI Orchestration Engine (Python 3.11)"]

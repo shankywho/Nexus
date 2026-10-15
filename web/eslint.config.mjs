@@ -1,17 +1,7 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 
 export default [
-  {
-    ignores: [
-      ".next/**",
-      "**/*.d.ts",
-      "app/components/forceSimulationWorker.js",
-      "components/ui/**",
-      "eslint.config.mjs",
-      "next.config.js",
-      "node_modules/**",
-    ],
-  },
+  { ignores: [".next/**", "**/*.d.ts", "eslint.config.mjs", "next.config.js", "node_modules/**"] },
   ...nextCoreWebVitals,
   {
     rules: {
