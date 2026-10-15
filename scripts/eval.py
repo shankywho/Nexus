@@ -8,11 +8,13 @@ import time
 from pathlib import Path
 from typing import Any
 
-# Ensure api directory is in python path
+# Ensure api and root directories are in python path
 root_dir = Path(__file__).resolve().parent.parent
 api_dir = root_dir / "api"
 if str(api_dir) not in sys.path:
     sys.path.insert(0, str(api_dir))
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
 
 from nexus_api.models.api import AskRequest
 from nexus_api.services.ask_agent import answer_question
@@ -37,6 +39,21 @@ async def run_evaluation() -> dict[str, Any]:
 
     with open(gold_file, encoding="utf-8") as f:
         questions: list[dict[str, Any]] = json.load(f)
+
+    # Ensure database contains full events and decisions for evaluation
+    try:
+        from nexus_api.adapters.falkor import get_falkor_client
+        from scripts.seed import ensure_schema_indexes, seed_events, seed_people_and_services
+
+        falkor = get_falkor_client()
+        res = falkor.query("nexus_company", "MATCH (d:Decision {id: 'DEC-021'}) RETURN count(d)")
+        if not res or not res.result_set or res.result_set[0][0] == 0:
+            print("Seeding full dataset for benchmark evaluation...")
+            ensure_schema_indexes()
+            seed_people_and_services()
+            await seed_events()
+    except Exception as exc:
+        print(f"Notice: auto-seed check encountered: {exc}")
 
     baseline_rag = get_baseline_rag()
 

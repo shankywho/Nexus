@@ -5,6 +5,7 @@
 
 # Runtime storage and caches
 var/
+api/var/
 *.db
 *.sqlite
 *.sqlite3
@@ -14,6 +15,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .venv/
+api/.venv/
 venv/
 .pytest_cache/
 .ruff_cache/
