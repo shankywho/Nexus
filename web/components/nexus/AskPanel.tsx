@@ -9,17 +9,18 @@ export interface AskPanelProps {
 }
 
 const SAMPLES = [
-  "Where do we store user sessions?",
-  "Who maintains the session-store service?",
-  "What caused incident INC-77?",
-  "What decisions were superseded?",
+  { label: "Where are sessions stored?", question: "Where do we store user sessions?" },
+  { label: "Who maintains session-store?", question: "Who maintains the session-store service?" },
+  { label: "What caused INC-77?", question: "What caused incident INC-77?" },
+  { label: "What was replaced?", question: "What decisions were superseded?" },
 ];
 
 export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
-  const [question, setQuestion] = useState(SAMPLES[0]);
+  const [question, setQuestion] = useState(SAMPLES[0].question);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<AskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
 
   const ask = useCallback(
     async (q: string) => {
@@ -30,6 +31,7 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
       try {
         const res = await askNexus(text);
         setResponse(res);
+        setHistory((h) => [text, ...h.filter((x) => x !== text)].slice(0, 5));
         onQuestionAnswered?.(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "The API did not answer. Check that it is running on port 8000.");
@@ -41,7 +43,7 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
   );
 
   useEffect(() => {
-    ask(SAMPLES[0]);
+    ask(SAMPLES[0].question);
     // run once on mount so the panel opens with a real answer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -50,21 +52,25 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
 
   return (
     <div data-testid="ask-panel" className="h-full flex flex-col gap-3 p-3 min-h-0">
-      <div className="flex flex-wrap gap-2">
-        {SAMPLES.map((q) => (
-          <button
-            key={q}
-            type="button"
-            className="nx-chip"
-            style={{ cursor: "pointer", fontSize: 16 }}
-            onClick={() => {
-              setQuestion(q);
-              ask(q);
-            }}
-          >
-            {q}
-          </button>
-        ))}
+      <div>
+        <label className="sr-only" htmlFor="nx-examples">Example questions</label>
+        <select
+          id="nx-examples"
+          className="nx-input"
+          value=""
+          onChange={(e) => {
+            if (!e.target.value) return;
+            setQuestion(e.target.value);
+            ask(e.target.value);
+          }}
+        >
+          <option value="">Try an example question…</option>
+          {SAMPLES.map((q) => (
+            <option key={q.label} value={q.question}>
+              {q.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="nx-scroll flex-1 min-h-0 flex flex-col gap-3 pr-1" aria-live="polite">
@@ -79,18 +85,37 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
             <div className="p-3" style={{ background: "var(--nx-ink)", boxShadow: "inset 0 0 0 2px var(--nx-line)" }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="nx-display" style={{ color: "var(--nx-mint)" }}>Answer</span>
-                <span className="nx-chip">
-                  <span className="nx-dot" />
-                  {Math.round(response.confidence * 100)}% sure
+                <span className="flex gap-2">
+                  <span className="nx-chip" title={response.model ?? undefined}>
+                    {response.mode === "claude" ? "Claude" : response.mode === "openai" ? "OpenAI" : "offline"}
+                  </span>
+                  <span className="nx-chip">
+                    <span className="nx-dot" />
+                    {Math.round(response.confidence * 100)}% sure
+                  </span>
                 </span>
               </div>
-              <p style={{ fontSize: 16, lineHeight: "22px" }}>{response.answer}</p>
+              <p style={{ fontSize: 16, lineHeight: "23px" }}>{response.answer}</p>
             </div>
             <ProvenanceBadge
               currentSource={response.current_sources[0]}
               supersededSource={response.superseded_sources[0]}
               decisionId={decisionId}
             />
+            {history.length > 1 && (
+              <div>
+                <p className="nx-display" style={{ color: "var(--nx-dim)", marginBottom: 6 }}>Earlier questions</p>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                  {history.slice(1).map((h) => (
+                    <li key={h}>
+                      <button type="button" onClick={() => { setQuestion(h); ask(h); }} style={{ background: "none", border: 0, color: "var(--nx-sky)", cursor: "pointer", padding: "2px 0", font: "inherit", textAlign: "left" }}>
+                        {h}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {response.cypher_queries?.length > 0 && (
               <details>
                 <summary className="nx-mono" style={{ cursor: "pointer", color: "var(--nx-sky)" }}>

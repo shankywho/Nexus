@@ -47,6 +47,9 @@ export interface AskResponse {
   cypher_queries: string[];
   warnings: string[];
   run_id: string;
+  mode?: string;
+  model?: string | null;
+  degraded?: boolean;
 }
 
 export interface ProvenanceResponse {
@@ -160,6 +163,20 @@ export async function fetchSources(limit = 200): Promise<SourceEvent[]> {
   const res = await fetch(`${BASE_URL}/sources?limit=${limit}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch sources: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export interface Health {
+  status: string;
+  falkordb: string;
+  llm: { mode: "claude" | "openai" | "scripted"; provider: string; model: string | null };
+}
+
+export async function fetchHealth(): Promise<Health> {
+  const res = await fetch(`${BASE_URL}/health`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch health: ${res.statusText}`);
   }
   return res.json();
 }

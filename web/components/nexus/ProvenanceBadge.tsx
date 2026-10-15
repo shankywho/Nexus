@@ -31,11 +31,11 @@ export function ProvenanceBadge({ currentSource, supersededSource, decisionId, r
       <div className="p-3 flex flex-col gap-3">
         <div className="flex gap-3 items-start">
           <span className="nx-chip" style={{ background: "#1f8a5a", color: "#fff" }}>use</span>
-          <span className="nx-mono" style={{ fontSize: 19, lineHeight: "19px" }}>{current ?? "No current source found"}</span>
+          <span className="nx-mono" style={{ fontSize: 15, lineHeight: "20px" }}>{current ?? "No current source found"}</span>
         </div>
         <div className="flex gap-3 items-start">
           <span className="nx-chip" style={{ background: "#a63a3a", color: "#fff" }}>old</span>
-          <span className="nx-mono" style={{ fontSize: 19, lineHeight: "19px", color: "var(--nx-dim)", textDecoration: "line-through" }}>
+          <span className="nx-mono" style={{ fontSize: 15, lineHeight: "20px", color: "var(--nx-dim)", textDecoration: "line-through" }}>
             {old ?? "Nothing superseded"}
           </span>
         </div>

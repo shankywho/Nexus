@@ -96,6 +96,6 @@ export function buildRooms(data: TopologyData) {
   const rooms = Array.from(teams.values()).filter((r) => r.people.length + r.services.length + r.decisions.length > 0);
   rooms.sort((a, b) => b.people.length + b.services.length - (a.people.length + a.services.length));
   if (records.decisions.length) rooms.push(records);
-  return { rooms, supersededBy, incidents, personNote };
+  return { rooms, supersededBy, incidents, personNote, serviceOwners, decisionService, personTeam, serviceTeam };
 }
 

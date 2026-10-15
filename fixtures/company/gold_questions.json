@@ -131,5 +131,32 @@
       "lin-391",
       "migrate session store to redis"
     ]
+  },
+  {
+    "q": "Which signing algorithm does the auth gateway use for JWTs now?",
+    "gold_answer_contains": [
+      "RS256"
+    ],
+    "gold_current_source_ids": [
+      "ADR-049",
+      "DEC-033"
+    ],
+    "stale_trap_terms": [
+      "shared hs256 secret"
+    ]
+  },
+  {
+    "q": "What happened to the single SMS provider setup?",
+    "gold_answer_contains": [
+      "BeamSMS",
+      "failover"
+    ],
+    "gold_current_source_ids": [
+      "ADR-048",
+      "DEC-032"
+    ],
+    "stale_trap_terms": [
+      "single provider"
+    ]
   }
 ]

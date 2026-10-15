@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from nexus_api.adapters.falkor import get_falkor_client
+from nexus_api.adapters.llm import llm_mode
 from nexus_api.config import get_settings
 
 router = APIRouter(tags=["health"])
@@ -17,15 +18,23 @@ class GraphCounts(BaseModel):
     docs: int
 
 
+class LLMInfo(BaseModel):
+    mode: str
+    provider: str
+    model: str | None = None
+
+
 class HealthResponse(BaseModel):
     status: str
     falkordb: str
     mock: bool
     graphs: GraphCounts
+    llm: LLMInfo
 
 
 @router.get("/health", response_model=HealthResponse)
 @router.get("/healthz", response_model=HealthResponse)
+@router.get("/api/health", response_model=HealthResponse)
 def get_health() -> dict[str, Any]:
     """Return health status of API, FalkorDB connection, and graph node counts."""
     settings = get_settings()
@@ -45,6 +54,11 @@ def get_health() -> dict[str, Any]:
         "status": "ok" if falkor_up else "degraded",
         "falkordb": "up" if falkor_up else "down",
         "mock": settings.MOCK_EXTERNALS,
+        "llm": {
+            "mode": llm_mode(),
+            "provider": settings.LLM_PROVIDER,
+            "model": settings.ANTHROPIC_MODEL if llm_mode() == "claude" else None,
+        },
         "graphs": {
             "company": company_count,
             "temporal": temporal_count,

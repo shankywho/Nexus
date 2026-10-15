@@ -17,6 +17,7 @@ const LABELS: Array<{ kind: string; label: string }> = [
   { kind: "incident", label: "Incidents" },
 ];
 
+/** Horizontal strip: how much has been ingested from each source, and what came in last. */
 export function IngestionStreams({ onEventReceived, refreshKey = 0 }: IngestionStreamsProps) {
   const [events, setEvents] = useState<SourceEvent[]>([]);
   const [live, setLive] = useState(true);
@@ -55,34 +56,30 @@ export function IngestionStreams({ onEventReceived, refreshKey = 0 }: IngestionS
     return m;
   }, [events]);
 
-  const latest = useMemo(() => [...events].sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? "")).slice(0, 16), [events]);
+  const latest = useMemo(() => [...events].sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? "")).slice(0, 4), [events]);
   const labelOf = (k: string | null) => LABELS.find((l) => l.kind === k)?.label ?? k ?? "other";
 
   return (
-    <section className="nx-panel flex flex-col min-h-0" aria-label="Incoming events">
-      <header className="nx-panel-head">
-        <span className="nx-display">Mail room</span>
-        <span className="nx-chip">
-          <span className={`nx-dot ${live ? "" : "is-bad"}`} />
-          {live ? "live" : "offline"}
-        </span>
-      </header>
-      <ul className="p-3 grid grid-cols-2 gap-2" style={{ listStyle: "none", margin: 0 }}>
+    <section className="flex items-center gap-5 px-5 py-2 shrink-0" aria-label="Ingested events" style={{ borderTop: "4px solid var(--nx-ink)", background: "var(--nx-panel)" }}>
+      <span className="nx-chip">
+        <span className={`nx-dot ${live ? "" : "is-bad"}`} />
+        {live ? "receiving" : "offline"}
+      </span>
+      <ul className="flex items-center gap-4" style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {LABELS.map((l) => (
-          <li key={l.kind} className="flex items-baseline justify-between" style={{ background: "var(--nx-ink)", padding: "4px 8px" }}>
-            <span>{l.label}</span>
-            <span className="nx-mono" style={{ color: "var(--nx-mint)", fontSize: 22 }}>{counts.get(l.kind) ?? 0}</span>
+          <li key={l.kind} className="flex items-baseline gap-2">
+            <span style={{ color: "var(--nx-dim)" }}>{l.label}</span>
+            <span className="nx-mono" style={{ color: "var(--nx-mint)", fontSize: 18, fontWeight: 600 }}>{counts.get(l.kind) ?? 0}</span>
           </li>
         ))}
       </ul>
-      <div className="nx-display px-3 pb-2" style={{ color: "var(--nx-dim)" }}>Latest</div>
-      <ol className="nx-scroll nx-mono flex-1 min-h-0 px-3 pb-3" style={{ listStyle: "none", margin: 0 }}>
+      <span style={{ width: 2, alignSelf: "stretch", background: "var(--nx-line)" }} aria-hidden />
+      <ol className="nx-mono flex items-center gap-5 min-w-0" style={{ listStyle: "none", margin: 0, padding: 0, overflow: "hidden", whiteSpace: "nowrap" }}>
         {latest.length === 0 && <li style={{ color: "var(--nx-dim)" }}>No events yet. Replay the company sync.</li>}
         {latest.map((e) => (
-          <li key={e.id} className="flex justify-between gap-2" style={{ borderTop: "1px solid var(--nx-line)", padding: "2px 0", whiteSpace: "nowrap" }}>
-            <span>{e.id}</span>
-            <span style={{ color: "var(--nx-sky)" }}>{labelOf(e.kind)}</span>
-            <span style={{ color: "var(--nx-dim)" }}>{(e.ts ?? "").slice(5, 10)}</span>
+          <li key={e.id}>
+            <span style={{ color: "var(--nx-dim)" }}>{(e.ts ?? "").slice(5, 10)}</span>{" "}
+            <span style={{ color: "var(--nx-sky)" }}>{labelOf(e.kind)}</span> {e.id}
           </li>
         ))}
       </ol>

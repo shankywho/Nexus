@@ -66,3 +66,12 @@ test("describes what a person owns", () => {
 test("returns no rooms for an empty graph", () => {
   assert.deepEqual(buildRooms({ nodes: [], links: [] }).rooms, []);
 });
+
+test("graph layout draws only teams, people, services and decisions", async () => {
+  const { layoutGraph } = await import("./graphLayout.ts");
+  const g = layoutGraph(data);
+  assert.deepEqual(new Set(g.nodes.map((n) => n.kind)), new Set(["team", "person", "service", "decision"]));
+  assert.ok(g.nodes.every((n) => Number.isFinite(n.x) && Number.isFinite(n.y)));
+  assert.ok(g.links.some((l) => l.kind === "supersedes" && l.source === "DEC-021" && l.target === "DEC-017"));
+  assert.ok(g.nodes.find((n) => n.id === "session-store")?.incident);
+});

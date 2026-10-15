@@ -13,7 +13,7 @@ from nexus_api.services.sync_replayer import get_sync_replayer
 
 @pytest.mark.asyncio
 async def test_integration_7_sync_simulation_and_sse(async_client: AsyncClient) -> None:
-    """Integration 7: /api/sync/simulate processes 50/50, emits sync.progress, second call -> 409."""
+    """Integration 7: /api/sync/simulate processes 76/76, emits sync.progress, second call -> 409."""
     falkor = get_falkor_client()
     falkor.reset_nexus_graphs()
     ensure_schema_indexes()
@@ -60,16 +60,16 @@ async def test_integration_7_sync_simulation_and_sse(async_client: AsyncClient) 
 
     final_status = replayer.get_status()
     assert final_status["state"] == "completed"
-    assert final_status["total"] == 50
-    assert final_status["processed"] == 50
+    assert final_status["total"] == 76
+    assert final_status["processed"] == 76
 
     # Verify status API returns completed
     r_status = await async_client.get("/api/sync/status")
     assert r_status.status_code == 200
     st_json = r_status.json()
     assert st_json["state"] == "completed"
-    assert st_json["processed"] == 50
-    assert st_json["total"] == 50
+    assert st_json["processed"] == 76
+    assert st_json["total"] == 76
 
     # Verify we received sync.progress SSE messages
     assert len(received_events) > 0

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { fetchTopology, runAudit, TopologyData, TopologyNode } from "@/lib/nexus/api";
+import { fetchHealth, fetchTopology, runAudit, TopologyData, TopologyNode, type Health } from "@/lib/nexus/api";
 import { AuditBar, AuditKind } from "@/components/nexus/AuditBar";
 import { LiveTopology } from "@/components/nexus/LiveTopology";
 import { OfficeFloor } from "@/components/nexus/OfficeFloor";
@@ -22,6 +22,7 @@ export default function NexusDashboard() {
   const [inspected, setInspected] = useState<TopologyNode | null>(null);
   const [view, setView] = useState<"office" | "graph">("office");
   const [syncTick, setSyncTick] = useState(0);
+  const [llm, setLlm] = useState<Health["llm"] | null>(null);
 
   const loadTopology = useCallback(async () => {
     try {
@@ -35,6 +36,9 @@ export default function NexusDashboard() {
 
   useEffect(() => {
     loadTopology();
+    fetchHealth()
+      .then((h) => setLlm(h.llm))
+      .catch(() => setLlm(null));
   }, [loadTopology]);
 
   const handleSync = useCallback(() => {
@@ -76,6 +80,12 @@ export default function NexusDashboard() {
             <span className={`nx-dot ${online === false ? "is-bad" : ""}`} />
             {online === false ? "api offline" : online ? "graph online" : "connecting"}
           </span>
+          {llm && (
+            <span className="nx-chip" data-testid="llm-chip" title={llm.mode === "scripted" ? "Set ANTHROPIC_API_KEY in .env and restart the API to answer with Claude" : `Answers come from ${llm.model ?? llm.provider}`}>
+              <span className={`nx-dot ${llm.mode === "scripted" ? "is-busy" : ""}`} />
+              {llm.mode === "scripted" ? "offline answers" : `${llm.mode === "claude" ? "Claude" : "OpenAI"} live`}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <div className="flex gap-2" role="group" aria-label="View">
@@ -110,12 +120,10 @@ export default function NexusDashboard() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 grid gap-3 px-3 pb-2" style={{ gridTemplateColumns: "300px minmax(0, 1fr) 420px" }}>
-        <IngestionStreams refreshKey={syncTick} onEventReceived={() => undefined} />
-
+      <div className="flex-1 min-h-0 grid gap-3 px-3 pb-2" style={{ gridTemplateColumns: "minmax(0, 1fr) clamp(320px, 24vw, 380px)" }}>
         <main className="nx-panel flex flex-col min-h-0 min-w-0" aria-label="Office floor">
           <header className="nx-panel-head">
-            <span className="nx-display">{view === "office" ? "Floor 1" : "Decision graph"}</span>
+            <span className="nx-display">{view === "office" ? "Acme Payments · floor 1" : "Decision graph"}</span>
             <span className="flex gap-2">
               <span className="nx-chip">{topology.nodes.length} things</span>
               <span className="nx-chip">{topology.links.length} links</span>
@@ -156,7 +164,7 @@ export default function NexusDashboard() {
           <div className="flex-1 min-h-0">
             <AskPanel />
           </div>
-          <section aria-label="Decision ledger" style={{ borderTop: "4px solid var(--nx-ink)", maxHeight: 330 }} className="flex flex-col min-h-0">
+          <section aria-label="Decision ledger" style={{ borderTop: "4px solid var(--nx-ink)", maxHeight: 168 }} className="flex flex-col min-h-0">
             <header className="nx-panel-head">
               <span className="nx-display">Decision ledger</span>
               <span className="nx-chip">{decisions.length - dead} live</span>
@@ -171,8 +179,8 @@ export default function NexusDashboard() {
                       <button
                         type="button"
                         onClick={() => setInspected(d)}
-                        className="flex w-full justify-between gap-3 text-left"
-                        style={{ background: "none", border: 0, color: old ? "var(--nx-dim)" : "var(--nx-cream)", cursor: "pointer", padding: "2px 0", font: "inherit", textDecoration: old ? "line-through" : "none" }}
+                        className="flex w-full justify-between gap-3 text-left" title={String(d.properties?.summary ?? "")}
+                        style={{ background: "none", border: 0, color: old ? "var(--nx-dim)" : "var(--nx-cream)", cursor: "pointer", padding: "2px 0", font: "inherit", whiteSpace: "nowrap", textDecoration: old ? "line-through" : "none" }}
                       >
                         <span>{d.id}</span>
                         <span style={{ textDecoration: "none", color: old ? "var(--nx-coral)" : "var(--nx-mint)" }}>
@@ -180,7 +188,6 @@ export default function NexusDashboard() {
                         </span>
                         <span style={{ color: "var(--nx-dim)", textDecoration: "none" }}>{String(d.properties?.decided_at ?? "").slice(5, 10)}</span>
                       </button>
-                      <p style={{ margin: "0 0 6px", color: "var(--nx-dim)", fontSize: 16, lineHeight: "16px" }}>{String(d.properties?.summary ?? "").slice(0, 70)}</p>
                     </li>
                   );
                 })}
@@ -189,14 +196,15 @@ export default function NexusDashboard() {
         </aside>
       </div>
 
-      <footer className="flex items-center justify-between gap-6 px-5 py-2 shrink-0 nx-mono" style={{ borderTop: "4px solid var(--nx-ink)", background: "var(--nx-panel)", color: "var(--nx-dim)" }}>
+      <IngestionStreams refreshKey={syncTick} onEventReceived={() => undefined} />
+
+      <footer className="flex items-center justify-between gap-6 px-5 py-2 shrink-0" style={{ background: "var(--nx-bg)", color: "var(--nx-dim)", fontSize: 13 }}>
         <span className="flex items-center gap-5">
-          <span className="flex items-center gap-2"><i style={{ width: 14, height: 10, background: "#f1e6c3", boxShadow: "0 0 0 2px var(--nx-ink)" }} />live decision</span>
-          <span className="flex items-center gap-2"><i style={{ width: 14, height: 10, background: "#b9b39c", boxShadow: "0 0 0 2px var(--nx-coral)" }} />replaced decision</span>
-          <span className="flex items-center gap-2"><i style={{ width: 10, height: 10, background: "var(--nx-coral)" }} />open incident</span>
-          <span className="flex items-center gap-2"><i style={{ width: 10, height: 10, background: "var(--nx-sky)" }} />owner note</span>
+          <span className="flex items-center gap-2"><i style={{ width: 14, height: 10, background: "#f6efd6", boxShadow: "0 0 0 2px var(--nx-ink)" }} />Live decision</span>
+          <span className="flex items-center gap-2"><i style={{ width: 14, height: 10, background: "#c4bea6", boxShadow: "0 0 0 2px var(--nx-coral)" }} />Replaced decision</span>
+          <span className="flex items-center gap-2"><i style={{ width: 10, height: 10, background: "var(--nx-coral)" }} />Open incident</span>
         </span>
-        <span>graphs: nexus_company · nexus_temporal · nexus_docs</span>
+        <span>Click any desk, rack or board for details</span>
       </footer>
     </div>
   );

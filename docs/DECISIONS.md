@@ -153,3 +153,21 @@ open http://localhost:3000/nexus
 - **Why:** Smaller attack surface, faster builds, and a repo that shows only original work.
 - **Trade-off:** The app has no user login. Run it behind an auth proxy before exposing it. FalkorDB can still be inspected with `redis-cli`, the MCP server on port 8080, or the API `/debug` page.
 - **How to undo:** `git revert` the removal commit.
+
+---
+
+## D-012 Readability Pass on the Office and Graph Views
+- **Context:** The first office view scaled its SVG to fit, so on a 1440 px screen text rendered near 7 px. The pixel body font (Pixelify Sans) blurred at small sizes, and the force graph drew all 126 nodes, including every source event.
+- **Choice:** Body text uses Atkinson Hyperlegible; Press Start 2P is only for signs and titles. The floor never scales below 0.8 and scrolls instead. Each room has its own floor colour, roles moved to hover text, speech bubbles show only on hover, and the Mail room became a bottom strip. The graph now shows only teams, people, services and decisions, laid out as fixed islands per team with labels placed outside the rings.
+- **Why:** The page is a reading surface for engineers. Legibility and a quiet default beat decoration.
+- **How to undo:** `git revert` the commit that introduced this entry.
+
+---
+
+## D-013 Claude as the Answer Engine, Graph Context Over Hardcoded Replies
+- **Context:** The ask agent answered with `if/elif` text for the original demo questions and a stub for everything else. Nothing used an LLM, so a live demo could not answer new questions.
+- **Choice:** Added an Anthropic provider (`ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`). Claude answers from graph context read from FalkorDB, and a strict validator drops ids that are not graph nodes. Without a key the scripted answers remain, now backed by a graph-derived fallback. `MOCK_EXTERNALS` still controls graph extraction only, so a key does not require Graphiti or OpenAI.
+- **Data:** Added 26 events across three correlated stories (auth-gateway JWT signing, SMS provider failover, metrics collector), two ADR documents and two gold questions.
+- **Why:** The demo has to answer questions it has not rehearsed, and the answer has to stay grounded in the graph.
+- **How to undo:** Unset `ANTHROPIC_API_KEY`; revert the commit to remove the code.
+

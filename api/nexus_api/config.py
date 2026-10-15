@@ -30,7 +30,9 @@ class Settings(BaseSettings):
     QUERY_TIMEOUT_MS: int = 5000
 
     # LLM
-    LLM_PROVIDER: str = "openai"
+    LLM_PROVIDER: str = "anthropic"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-sonnet-5-5"
     OPENAI_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4.1-mini"

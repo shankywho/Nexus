@@ -55,3 +55,16 @@ class AskResponse(BaseModel):
     confidence: float = 0.9
     degraded: bool = False
     run_id: str = ""
+    mode: str = "scripted"
+    model: str | None = None
+
+
+class LLMAnswer(BaseModel):
+    """Structured answer returned by the language model before graph validation."""
+
+    answer: str = ""
+    current_sources: list[SourceRef] = Field(default_factory=list)
+    superseded_sources: list[SourceRef] = Field(default_factory=list)
+    path: list[str] = Field(default_factory=list)
+    owners: list[OwnerRef] = Field(default_factory=list)
+    confidence: float = 0.8

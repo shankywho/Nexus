@@ -48,7 +48,7 @@ def test_fixtures_complete_and_valid() -> None:
     assert "ledger" in service_ids
     assert "auth-gateway" in service_ids
 
-    # 3. Events (EXACTLY 50)
+    # 3. Events (50 core + 26 storyline events)
     events_path = base_dir / "fixtures/company/events.jsonl"
     assert events_path.exists(), "events.jsonl must exist"
     events = []
@@ -57,10 +57,10 @@ def test_fixtures_complete_and_valid() -> None:
             if line.strip():
                 events.append(json.loads(line))
 
-    assert len(events) == 50, f"Expected exactly 50 events, got {len(events)}"
+    assert len(events) == 76, f"Expected 76 events, got {len(events)}"
 
     event_ids = {e["id"] for e in events}
-    assert len(event_ids) == 50, "All event IDs must be unique"
+    assert len(event_ids) == len(events), "All event IDs must be unique"
 
     # Validate anchor events
     anchor_event_ids = [
@@ -114,7 +114,7 @@ def test_fixtures_complete_and_valid() -> None:
     assert gq_path.exists()
     with open(gq_path, encoding="utf-8") as f:
         gq = json.load(f)
-    assert len(gq) == 10, "Must have exactly 10 gold questions"
+    assert len(gq) == 12, "Must have 12 gold questions"
     for item in gq:
         assert "q" in item and len(item["q"]) > 5
         assert "gold_answer_contains" in item and len(item["gold_answer_contains"]) > 0

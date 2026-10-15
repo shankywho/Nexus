@@ -1,7 +1,11 @@
-"""Generate fixtures/company/events.jsonl with exactly 50 events."""
+"""Generate fixtures/company/events.jsonl: 50 core events plus the storylines in scripts/stories.py."""
 
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from stories import story_events
 
 events = [
     # 1-6: 2026-09-18 Slack thread debate on session store (DEC-017 proposed)
@@ -726,6 +730,8 @@ events = [
         "facts": [{"subject": "acme-architecture", "predicate": "DOCUMENTED_IN", "object": "NOTION-105", "valid_at": "2026-10-14T17:00:00Z", "invalid_at": None}]
     }
 ]
+
+events = events + story_events()
 
 out_path = Path("fixtures/company/events.jsonl")
 out_path.parent.mkdir(parents=True, exist_ok=True)

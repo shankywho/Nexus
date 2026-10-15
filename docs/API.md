@@ -4,13 +4,13 @@ Base URL: `http://localhost:8000`. Interactive docs: `/docs` (OpenAPI). All rout
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness and FalkorDB connection status. |
+| `GET` | `/health`, `/api/health` | Liveness, FalkorDB status, graph counts and `llm.mode` (`claude`, `openai` or `scripted`). |
 | `POST` | `/api/ingest/event` | Ingest one event (Slack, Linear, GitHub, incident, ADR). Idempotent on event id. |
 | `POST` | `/api/audits/who-owns-what` | Ownership audit. |
 | `POST` | `/api/audits/decision-trace` | Decision lineage. Optional body: `{decision_id, service_id}`. |
 | `POST` | `/api/audits/stale-knowledge` | Active versus superseded decision sources. |
 | `POST` | `/api/audits/bus-factor` | Bus factor and expertise audit. |
-| `POST` | `/api/ask` | Body `{question, as_of?}`. Returns `answer`, `current_sources`, `superseded_sources`, `path`, `owners`, `confidence`, `degraded`, `run_id`. |
+| `POST` | `/api/ask` | Body `{question, as_of?}`. Returns `answer`, `current_sources`, `superseded_sources`, `path`, `owners`, `confidence`, `degraded`, `run_id`, `mode` (which engine answered) and `model`. |
 | `GET` | `/api/provenance/{decision_id}` | Multi-hop lineage for a decision. |
 | `GET` | `/api/graph/topology` | Nodes and edges for the topology view. |
 | `GET` | `/api/graph/temporal/edges` | Bi-temporal fact edges. |
