@@ -38,7 +38,7 @@ class OwnerRef(BaseModel):
 class AskRequest(BaseModel):
     """Request payload for /api/ask."""
 
-    question: str
+    question: str = Field(min_length=2, max_length=500)
     as_of: str | None = None
 
 

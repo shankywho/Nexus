@@ -1,29 +1,37 @@
+# Host ports can be changed without editing this file, e.g. NEXUS_FALKORDB_PORT=6390 docker compose up.
 services:
   falkordb:
     image: falkordb/falkordb:latest
-    container_name: nexus-falkordb
     ports:
-      - "6379:6379"
+      - "${NEXUS_FALKORDB_PORT:-6379}:6379"
     volumes:
       - falkordb_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: nexus-api
+      context: .
+      dockerfile: api/Dockerfile
     ports:
-      - "8000:8000"
+      - "${NEXUS_API_PORT:-8000}:8000"
     env_file:
       - .env.example
+      - path: .env
+        required: false
     environment:
-      - FALKORDB_HOST=falkordb
-      - FALKORDB_PORT=6379
-      - MOCK_EXTERNALS=true
-      - NEXUS_ORG_ID=acme
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6379"
+      CORS_ORIGINS: "http://localhost:${NEXUS_WEB_PORT:-3000},http://127.0.0.1:${NEXUS_WEB_PORT:-3000}"
+    volumes:
+      - api_var:/app/api/var
     depends_on:
-      - falkordb
+      falkordb:
+        condition: service_healthy
     restart: unless-stopped
 
   web:
@@ -32,26 +40,32 @@ services:
       dockerfile: Dockerfile
       args:
         NEXUS_API_URL: http://api:8000
-    container_name: nexus-web
     ports:
-      - "3000:3000"
+      - "${NEXUS_WEB_PORT:-3000}:3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
   mcp:
     image: falkordb/mcpserver:latest
-    container_name: nexus-mcp
     ports:
-      - "8080:8080"
+      - "${NEXUS_MCP_PORT:-8080}:8080"
     environment:
-      - FALKORDB_HOST=falkordb
-      - FALKORDB_PORT=6379
-      - MCP_TRANSPORT=http
-      - MCP_PORT=8080
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6379"
+      MCP_TRANSPORT: http
+      MCP_PORT: "8080"
     depends_on:
-      - falkordb
+      falkordb:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   falkordb_data:
+  api_var:

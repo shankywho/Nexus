@@ -39,25 +39,28 @@ Flat vector search over team history returns superseded answers. A migration to 
 
 ## Quickstart
 
-Requires Docker with Compose, Node.js 20+, Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
+Requires Docker with Compose. Nothing else is needed to run the demo.
 
 ```bash
-cp .env.example .env     # defaults run in zero-key mode
-make up                  # FalkorDB, API, web, MCP server
-(cd api && uv run python ../scripts/seed.py --until 2026-09-30)   # pre-incident state
-open http://localhost:3000/nexus
+cp .env.example .env     # defaults run offline; add ANTHROPIC_API_KEY to use Claude
+make up                  # builds and starts FalkorDB, API, web and the MCP server
+make demo                # loads the company as of Sep 30
+open http://localhost:3000
 ```
 
 Demo flow:
 
-1. Note `DEC-017` (sessions in Redis) shown as an active, green edge.
-2. Run **Bus Factor** from the audit bar.
-3. Click **Simulate Sync**. As `INC-77` and `PR-1184` stream in, `DEC-017` turns red and dashed, and `DEC-021` appears as active.
+1. Note `DEC-017` (sessions in Redis) shown as a live board.
+2. Run **Bus factor** from the audit bar.
+3. Click **Replay company sync**. As `INC-77` and `PR-1184` stream in, people react, envelopes fly, and `DEC-017` is stamped replaced while `DEC-021` appears.
 4. Ask *"Where do we store user sessions?"*. The answer cites `ADR-042` as current and `ADR-038` as superseded.
+
+Port in use? Set `NEXUS_FALKORDB_PORT`, `NEXUS_API_PORT`, `NEXUS_WEB_PORT` or `NEXUS_MCP_PORT` before `make up`.
 
 | Service | URL |
 |---|---|
-| Web HUD | http://localhost:3000/nexus |
+| Landing page | http://localhost:3000 |
+| Office | http://localhost:3000/nexus |
 | API and OpenAPI docs | http://localhost:8000/docs |
 | FalkorDB | `localhost:6379` |
 | MCP server | http://localhost:8080 |
@@ -66,8 +69,8 @@ Demo flow:
 
 ```bash
 echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env     # your key; .env is git-ignored
-make up
-(cd api && uv run python ../scripts/seed.py --reset)
+docker compose up -d api                         # restart the API so it reads the key
+make demo
 ```
 
 The header chip changes from "offline answers" to "Claude live", and each answer shows a Claude badge. The model gets the decisions, owners, incidents and best-matching events read from FalkorDB, and every id in its reply is checked against the graph. If the key is wrong or the call fails, the app falls back to offline answers and marks the answer `degraded`. See [docs/DEMO.md](docs/DEMO.md) for a recording script.
@@ -75,14 +78,15 @@ The header chip changes from "offline answers" to "Claude live", and each answer
 ## Development
 
 ```bash
-make setup    # create .env, uv sync, npm ci
-make test     # api pytest and web unit tests
+make setup    # local development: create .env, uv sync, npm ci
+make test     # api and web unit tests, no services needed
 make lint     # ruff, mypy, eslint
-make eval     # NEXUS vs flat BM25 benchmark
-make reset    # wipe graphs and local run history
+make eval     # NEXUS vs flat BM25 benchmark, run inside the API container
+make reset    # wipe graphs and run history
+make logs     # follow container logs
 ```
 
-API unit tests need no services: `cd api && uv run pytest tests/unit`. Integration tests need a running FalkorDB.
+API unit tests need no services: `cd api && uv run pytest tests/unit`. Integration tests need a FalkorDB on `FALKORDB_PORT` and **reset its graphs**, so point them at a scratch instance. Live Graphiti extraction (`MOCK_EXTERNALS=false`) needs the optional extra: `uv sync --extra live`.
 
 ## Configuration
 
@@ -96,7 +100,8 @@ All settings are environment variables. See [`.env.example`](.env.example).
 | `ANTHROPIC_API_KEY` | empty | Turns on Claude answers. Restart the API after setting it. |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Model used for answers. |
 | `OPENAI_API_KEY` / `GOOGLE_API_KEY` | empty | Only for the optional OpenAI provider and live graph extraction (`MOCK_EXTERNALS=false`). |
-| `ADMIN_TOKEN` | `change-me` | Guards destructive routes. **Change it outside local development.** |
+| `ADMIN_TOKEN` | `change-me` | Required as `X-Admin-Token` on reset, source deletion and `reset=true` replays. **Change it outside local development.** |
+| `INGEST_TOKEN` | empty | When set, `POST /api/ingest/event` requires it as `X-Ingest-Token`. |
 | `NEXUS_API_URL` | `http://localhost:8000` | API address the web app proxies to. Set at build time in Docker. |
 | `CORS_ORIGINS` | `http://localhost:3000` | Allowed browser origins. |
 

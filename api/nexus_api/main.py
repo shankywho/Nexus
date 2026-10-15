@@ -1,13 +1,15 @@
 """FastAPI application entrypoint for NEXUS."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from redis.exceptions import RedisError
 
 from nexus_api.config import get_settings
 from nexus_api.routes.admin import router as admin_router
@@ -22,11 +24,15 @@ from nexus_api.routes.runs import router as runs_router
 from nexus_api.routes.sources import router as sources_router
 from nexus_api.routes.sync import router as sync_router
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Lifespan context manager for startup and shutdown tasks."""
     Path("var").mkdir(parents=True, exist_ok=True)
+    if get_settings().ADMIN_TOKEN == "change-me":
+        logger.warning("ADMIN_TOKEN is the default value. Set your own before exposing this API.")
     yield
 
 
@@ -52,6 +58,14 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(RedisError)
+    async def graph_unavailable(_: Request, exc: RedisError) -> JSONResponse:
+        logger.error("FalkorDB error: %s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "The graph database is unreachable. Check that FalkorDB is running."},
+        )
 
     # Register routers
     app.include_router(health_router)

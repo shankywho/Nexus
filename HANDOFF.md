@@ -15,10 +15,12 @@ State as of 2026-10-15. Suggest `/clear` before the next phase.
 
 - Live floor motion (D-014); SSE now reaches the browser (named events plus `no-transform`).
 
+- Backend hardening: admin and ingest guards, input limits, 503 on graph outage, exact episode delete, Docker image with fixtures and a non-root user, compose healthchecks, `.env` honoured.
+- Full `docker compose` run verified: seed, ask, SSE through the web proxy, eval, guards.
+
 ## Not verified
 - A real Anthropic call. The live path was exercised with a faked model reply only.
 - Playwright e2e (`web/e2e/tests/nexus.spec.ts`).
-- `docker compose up --build` end to end.
 
 ## Local setup used
 - FalkorDB for NEXUS runs as `nexus-falkordb` on 6390 (6379 was taken). API: `FALKORDB_PORT=6390`.

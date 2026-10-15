@@ -1,6 +1,9 @@
 # API Reference
 
-Base URL: `http://localhost:8000`. Interactive docs: `/docs` (OpenAPI). All routes are defined in [`api/nexus_api/routes/`](../api/nexus_api/routes).
+Base URL: `http://localhost:8000`.
+
+**Auth.** Reads are open. `POST /api/admin/reset`, `DELETE /api/sources/{event_id}` and `POST /api/sync/simulate` with `reset=true` need `X-Admin-Token: <ADMIN_TOKEN>` (403 otherwise). If `INGEST_TOKEN` is set, `POST /api/ingest/event` needs `X-Ingest-Token` (401 otherwise). If FalkorDB is unreachable, graph routes return 503 with a plain message. There is no user login; run behind your own proxy if you expose it.
+ Interactive docs: `/docs` (OpenAPI). All routes are defined in [`api/nexus_api/routes/`](../api/nexus_api/routes).
 
 | Method | Path | Description |
 |---|---|---|

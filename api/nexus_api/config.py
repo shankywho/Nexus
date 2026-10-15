@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     # API
     API_PORT: int = 8000
     ADMIN_TOKEN: str = "change-me"
+    INGEST_TOKEN: str = ""  # when set, POST /api/ingest/event requires it as X-Ingest-Token
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     # Sync simulation

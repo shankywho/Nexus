@@ -56,7 +56,7 @@ def get_health() -> dict[str, Any]:
         "mock": settings.MOCK_EXTERNALS,
         "llm": {
             "mode": llm_mode(),
-            "provider": settings.LLM_PROVIDER,
+            "provider": llm_mode(),
             "model": settings.ANTHROPIC_MODEL if llm_mode() == "claude" else None,
         },
         "graphs": {

@@ -10,19 +10,21 @@ requires-python = ">=3.11"
 dependencies = [
     "falkordb>=1.8.0",
     "fastapi>=0.143.1",
-    "graphiti-core[falkordb]>=0.30.2",
-    "graphrag-sdk>=1.4.0",
     "httpx>=0.28.1",
-    "mypy>=2.4.0",
     "pydantic>=2.14.1",
     "pydantic-settings>=2.16.0",
-    "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
     "rank-bm25>=0.2.2",
-    "ruff>=0.17.0",
     "uvicorn>=0.54.0",
     "python-multipart>=0.0.9",
     "anthropic>=1.14.0",
+]
+
+[project.optional-dependencies]
+# Only needed when MOCK_EXTERNALS=false (live Graphiti extraction and GraphRAG-SDK indexing).
+# They pull in PyTorch, so the default install and the Docker image leave them out.
+live = [
+    "graphiti-core[falkordb]>=0.30.2",
+    "graphrag-sdk>=1.4.0",
 ]
 
 [build-system]
@@ -39,3 +41,11 @@ ignore_missing_imports = true
 
 [tool.ruff.lint]
 ignore = ["BLE001", "ASYNC230", "FURB162"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.17.1",
+]

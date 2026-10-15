@@ -2,6 +2,7 @@
 """Replay script for NEXUS: replays events.jsonl via simulate API or raw webhook ingest."""
 
 import argparse
+import os
 import json
 import sys
 import time
@@ -16,7 +17,11 @@ def replay_simulate(api_url: str, interval_ms: int, reset: bool) -> None:
     """Start simulation via /api/sync/simulate endpoint."""
     print(f"Triggering sync simulation at {api_url}/api/sync/simulate (interval={interval_ms}ms, reset={reset})...")
     with httpx.Client(base_url=api_url, timeout=30.0) as client:
-        res = client.post("/api/sync/simulate", json={"interval_ms": interval_ms, "reset": reset})
+        res = client.post(
+            "/api/sync/simulate",
+            json={"interval_ms": interval_ms, "reset": reset},
+            headers={"X-Admin-Token": os.environ.get("ADMIN_TOKEN", "change-me")},
+        )
         if res.status_code == 409:
             print("Sync simulation is already running.")
             return

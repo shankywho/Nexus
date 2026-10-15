@@ -9,6 +9,8 @@ uv sync
 uv run uvicorn nexus_api.main:app --reload --port 8000
 ```
 
+Dependencies: the default install is light. Live Graphiti and GraphRAG extraction (`MOCK_EXTERNALS=false`) needs `uv sync --extra live`, which pulls in PyTorch.
+
 Needs FalkorDB on `FALKORDB_HOST:FALKORDB_PORT` (`docker compose up -d falkordb` from the repo root). Configuration is read from environment variables; see [../.env.example](../.env.example).
 
 ## Test and check

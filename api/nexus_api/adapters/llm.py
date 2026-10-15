@@ -200,12 +200,16 @@ _llm_instance: LLMClient | None = None
 
 
 def llm_mode() -> str:
-    """Which engine answers questions: "claude", "openai" or "scripted" (offline demo answers)."""
+    """Which engine answers questions: "claude", "openai" or "scripted" (offline answers).
+
+    A configured key decides. LLM_PROVIDER=openai only matters when an OpenAI key is also set,
+    so a stale value in an old .env cannot hide a valid ANTHROPIC_API_KEY.
+    """
     settings = get_settings()
-    if settings.LLM_PROVIDER == "anthropic" and settings.ANTHROPIC_API_KEY:
-        return "claude"
     if settings.LLM_PROVIDER == "openai" and settings.OPENAI_API_KEY and not settings.MOCK_EXTERNALS:
         return "openai"
+    if settings.ANTHROPIC_API_KEY:
+        return "claude"
     return "scripted"
 
 

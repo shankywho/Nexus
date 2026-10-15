@@ -1,17 +1,18 @@
 # Demo script
 
-About four minutes. Needs Docker, an Anthropic API key and a seeded graph.
+About four minutes. Needs Docker. An Anthropic API key is optional.
 
 ## Before recording
 
 ```bash
-echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env
+cp .env.example .env
+echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env    # optional; without it answers are offline
 make up
-(cd api && uv run python ../scripts/seed.py --reset --until 2026-09-30)   # the company before the incidents
-open http://localhost:3000/nexus
+make demo                                     # the company before the incidents
+open http://localhost:3000
 ```
 
-Check that the header shows **Claude live**.
+The header chip reads **Claude live** with a key and **offline answers** without one. Both work for the demo.
 
 ## Flow
 
@@ -35,3 +36,12 @@ Check that the header shows **Claude live**.
 | Auth gateway | DEC-030 shared HS256 secret | INC-81 secret in a log | DEC-033 RS256 with KMS rotation (ADR-049) |
 | Notifications | DEC-028 one SMS provider | INC-79 outage | DEC-032 failover (ADR-048) |
 | Metrics | none | n/a | DEC-035 OpenTelemetry collector (ADR-050), live |
+
+## If something looks wrong
+
+| Symptom | Fix |
+|---|---|
+| Boards do not change during replay | The graph was fully seeded. Run `make demo`, then replay. |
+| Header says "api offline" | `docker compose ps`; the API must be healthy. `make logs` shows why. |
+| "offline answers" with a key set | Restart the API after editing `.env`: `docker compose up -d api`. |
+| Port already in use | Set `NEXUS_FALKORDB_PORT`, `NEXUS_API_PORT` or `NEXUS_WEB_PORT`, then `make up`. |

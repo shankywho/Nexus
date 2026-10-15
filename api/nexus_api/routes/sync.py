@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from nexus_api.config import get_settings
+from nexus_api.routes.deps import matches_token
 from nexus_api.services.sync_replayer import get_sync_replayer
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
@@ -38,10 +39,10 @@ async def start_sync_simulation(
     interval_ms = request.interval_ms if request else settings.SYNC_DEFAULT_INTERVAL_MS
     reset = request.reset if request else False
 
-    if reset and x_admin_token and x_admin_token != settings.ADMIN_TOKEN:
+    if reset and not matches_token(x_admin_token, settings.ADMIN_TOKEN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin token required when reset=true",
+            detail="A valid X-Admin-Token header is required when reset=true",
         )
 
     replayer = get_sync_replayer()

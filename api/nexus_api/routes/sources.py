@@ -2,11 +2,12 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from nexus_api.adapters.falkor import get_falkor_client
 from nexus_api.config import get_settings
+from nexus_api.routes.deps import require_admin
 
 router = APIRouter(prefix="/api/sources", tags=["sources"])
 
@@ -26,7 +27,7 @@ class DeleteSourceResponse(BaseModel):
 
 
 @router.get("", response_model=list[SourceEventItem])
-def list_sources(limit: int = 100) -> list[dict[str, Any]]:
+def list_sources(limit: int = Query(default=100, ge=1, le=500)) -> list[dict[str, Any]]:
     """List recent SourceEvents for privacy and provenance auditing."""
     settings = get_settings()
     falkor = get_falkor_client()
@@ -56,18 +57,10 @@ def list_sources(limit: int = 100) -> list[dict[str, Any]]:
     return items
 
 
-@router.delete("/{event_id}", response_model=DeleteSourceResponse)
-def delete_source(
-    event_id: str, x_admin_token: str | None = Header(default=None)
-) -> dict[str, Any]:
+@router.delete("/{event_id}", response_model=DeleteSourceResponse, dependencies=[Depends(require_admin)])
+def delete_source(event_id: str) -> dict[str, Any]:
     """Delete a SourceEvent and any nodes whose only DERIVED_FROM is that event (§13)."""
     settings = get_settings()
-    if x_admin_token and x_admin_token != settings.ADMIN_TOKEN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid X-Admin-Token",
-        )
-
     falkor = get_falkor_client()
     graph_name = settings.GRAPH_COMPANY
     org_id = settings.NEXUS_ORG_ID
@@ -106,10 +99,10 @@ def delete_source(
         settings.GRAPH_TEMPORAL,
         """
         MATCH (ep:Episodic)
-        WHERE ep.name CONTAINS $event_id OR ep.uuid = $event_id
+        WHERE ep.name = $episode_name OR ep.uuid = $event_id
         DETACH DELETE ep
         """,
-        {"event_id": event_id},
+        {"event_id": event_id, "episode_name": f"Episode {event_id}"},
     )
 
     return {

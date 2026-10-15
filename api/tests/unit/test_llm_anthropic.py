@@ -78,3 +78,11 @@ def test_rank_events_prefers_matching_text_and_ids() -> None:
     picked = rank_events("Why did DEC-017 stop using Redis?", events)
     assert [e["id"] for e in picked] == ["e2"]
     assert "dec-017" in tokens("Why did DEC-017 stop?")
+
+
+def test_stale_openai_provider_does_not_hide_an_anthropic_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant-test")
+    assert llm_mode() == "claude"
