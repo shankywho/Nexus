@@ -136,7 +136,22 @@ async def ingest_source_event(payload: dict[str, Any]) -> tuple[IngestResult, in
         )
 
     await eventbus.publish(
-        "ingest.received", {"event_id": event_id, "kind": event.kind, "run_id": run_id}
+        "ingest.received",
+        {
+            "event_id": event_id,
+            "kind": event.kind,
+            "run_id": run_id,
+            "event": {
+                "id": event_id,
+                "kind": event.kind,
+                "actor": event.actor,
+                "channel": event.channel,
+                "ts": event.ts,
+                "text": (event.text or "")[:140],
+                "refs": {k: v for k, v in event.refs.model_dump().items() if v},
+                "supersedes": event.supersedes,
+            },
+        },
     )
 
     # 3. Concurrent Projector + Temporal ingestion

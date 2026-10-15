@@ -171,3 +171,11 @@ open http://localhost:3000/nexus
 - **Why:** The demo has to answer questions it has not rehearsed, and the answer has to stay grounded in the graph.
 - **How to undo:** Unset `ANTHROPIC_API_KEY`; revert the commit to remove the code.
 
+---
+
+## D-014 Live Floor Motion, and a Fix for the Event Stream
+- **Context:** The office was static. The browser never received live events: the API sends named SSE events (`sync.progress`, `ingest.received`) that `EventSource.onmessage` ignores, and Next's gzip compression buffered the stream.
+- **Choice:** `lib/nexus/useIngestStream.ts` listens to the named events, and SSE responses send `Cache-Control: no-cache, no-transform`. Events now carry actor, channel, text and refs. `OfficeFloor` plays a short scene per event, using timings from the Munder Difflin office scene (MIT, used with the author's permission): walk-in, scrolling screens, work halo, hop, envelope arc with arrival ring, 2.5 Hz alert, stamped board changes. All motion is stepped CSS or one `requestAnimationFrame` loop per envelope, and is off under `prefers-reduced-motion`.
+- **Why:** Status is easier to read as movement than as another label, and the replay demo now shows cause and effect.
+- **How to undo:** Remove the `event` prop from `OfficeFloor`; the rest of the app is unaffected.
+

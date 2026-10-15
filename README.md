@@ -18,6 +18,7 @@ Flat vector search over team history returns superseded answers. A migration to 
 - **Four audits:** who owns what, decision trace, stale knowledge, bus factor.
 - **Ask agent:** routes a question, runs multi-hop Cypher, validates against the graph, and returns current and superseded sources.
 - **HUD:** Next.js dashboard with an office floor-plan view and a live force-graph topology (superseded edges dashed red, active edges green), audit bar, ask panel and live sync via SSE.
+- **Live floor:** while events stream in, the actor reacts (halo, hop, a note saying what they are doing), an envelope flies to the service or decision it concerns, incidents ring the rack and flash a "!", replaced boards get stamped and new boards pop onto the wall. Motion is switched off for `prefers-reduced-motion`.
 - **Claude answers:** set `ANTHROPIC_API_KEY` and questions are answered by Claude from graph context, then checked against the graph so invented ids are dropped. Without a key, offline answers are built from the graph.
 - **Zero-key mode:** `MOCK_EXTERNALS=true` runs everything offline with deterministic extractors.
 
@@ -141,5 +142,5 @@ Numbers come from the offline answers on the 76-event dataset. With a Claude key
 ## Built on
 
 - `web/` started as a fork of [FalkorDB Browser](https://github.com/FalkorDB/falkordb-browser) v2.3.1 (ELv2 / SSPL). The upstream code has since been removed; see [MODIFICATIONS.md](MODIFICATIONS.md). The upstream [LICENSE](web/LICENSE.txt) is kept.
-- UI design language (chunky pixel panels, one pixel display face for signs) is inspired by [Munder Difflin](https://github.com/HarnessMD/munder-difflin) (MIT), used with the author's permission. No code or art assets were copied. Fonts: Press Start 2P and Atkinson Hyperlegible (SIL OFL) via `@fontsource`.
+- UI design language (chunky pixel panels, one pixel display face for signs) is inspired by [Munder Difflin](https://github.com/HarnessMD/munder-difflin) (MIT), used with the author's permission. The floor motion (walk-in, screen scroll, work halo, envelopes on an arc with an arrival ring) follows the timings of its office scene; the implementation is our own SVG code and no art assets were copied. Fonts: Press Start 2P and Atkinson Hyperlegible (SIL OFL) via `@fontsource`.
 - [FalkorDB](https://github.com/FalkorDB/FalkorDB), [Graphiti](https://github.com/getzep/graphiti) (Apache-2.0), [GraphRAG-SDK](https://github.com/FalkorDB/GraphRAG-SDK), [react-force-graph](https://github.com/vasturiano/react-force-graph).

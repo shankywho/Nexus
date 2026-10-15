@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { fetchSources, SourceEvent } from "@/lib/nexus/api";
 
 export interface IngestionStreamsProps {
-  onEventReceived?: (event: Record<string, unknown>) => void;
+  live: boolean;
+  /** Changes whenever a new event arrives or a sync finishes, so the counts reload. */
   refreshKey?: number;
 }
 
@@ -18,9 +19,8 @@ const LABELS: Array<{ kind: string; label: string }> = [
 ];
 
 /** Horizontal strip: how much has been ingested from each source, and what came in last. */
-export function IngestionStreams({ onEventReceived, refreshKey = 0 }: IngestionStreamsProps) {
+export function IngestionStreams({ live, refreshKey = 0 }: IngestionStreamsProps) {
   const [events, setEvents] = useState<SourceEvent[]>([]);
-  const [live, setLive] = useState(true);
 
   const load = useCallback(async () => {
     try {
@@ -33,22 +33,6 @@ export function IngestionStreams({ onEventReceived, refreshKey = 0 }: IngestionS
   useEffect(() => {
     load();
   }, [load, refreshKey]);
-
-  useEffect(() => {
-    const es = new EventSource("/api/events/stream");
-    es.onopen = () => setLive(true);
-    es.onerror = () => setLive(false);
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.kind || data.type === "ingest.received") load();
-        onEventReceived?.(data);
-      } catch {
-        // ignore malformed frames
-      }
-    };
-    return () => es.close();
-  }, [load, onEventReceived]);
 
   const counts = useMemo(() => {
     const m = new Map<string, number>();

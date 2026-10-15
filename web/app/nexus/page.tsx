@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { fetchHealth, fetchTopology, runAudit, TopologyData, TopologyNode, type Health } from "@/lib/nexus/api";
 import { AuditBar, AuditKind } from "@/components/nexus/AuditBar";
 import { LiveTopology } from "@/components/nexus/LiveTopology";
@@ -9,6 +9,7 @@ import { IngestionStreams } from "@/components/nexus/IngestionStreams";
 import { AskPanel } from "@/components/nexus/AskPanel";
 import { NodeInspector } from "@/components/nexus/NodeInspector";
 import { SimulateSyncButton } from "@/components/nexus/SimulateSyncButton";
+import { useIngestStream } from "@/lib/nexus/useIngestStream";
 
 const EMPTY: TopologyData = { nodes: [], links: [] };
 
@@ -22,6 +23,7 @@ export default function NexusDashboard() {
   const [inspected, setInspected] = useState<TopologyNode | null>(null);
   const [view, setView] = useState<"office" | "graph">("office");
   const [syncTick, setSyncTick] = useState(0);
+  const { live, event } = useIngestStream();
   const [llm, setLlm] = useState<Health["llm"] | null>(null);
 
   const loadTopology = useCallback(async () => {
@@ -40,6 +42,21 @@ export default function NexusDashboard() {
       .then((h) => setLlm(h.llm))
       .catch(() => setLlm(null));
   }, [loadTopology]);
+
+  // refresh the graph while events stream in, at most about once a second, so boards flip as it happens
+  const lastLoad = useRef(0);
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!event || pending.current) return;
+    pending.current = setTimeout(() => {
+      pending.current = null;
+      lastLoad.current = Date.now();
+      loadTopology();
+    }, Math.max(0, 1000 - (Date.now() - lastLoad.current)));
+  }, [event, loadTopology]);
+  useEffect(() => () => {
+    if (pending.current) clearTimeout(pending.current);
+  }, []);
 
   const handleSync = useCallback(() => {
     loadTopology();
@@ -135,7 +152,7 @@ export default function NexusDashboard() {
           </header>
           <div className="relative flex-1 min-h-0">
             {view === "office" ? (
-              <OfficeFloor data={topology} highlightIds={highlightIds} onNodeClick={setInspected} />
+              <OfficeFloor data={topology} highlightIds={highlightIds} onNodeClick={setInspected} event={event} />
             ) : (
               <LiveTopology data={topology} highlightIds={highlightIds} onNodeClick={setInspected} />
             )}
@@ -196,7 +213,7 @@ export default function NexusDashboard() {
         </aside>
       </div>
 
-      <IngestionStreams refreshKey={syncTick} onEventReceived={() => undefined} />
+      <IngestionStreams live={live} refreshKey={syncTick + (event?.seq ?? 0)} />
 
       <footer className="flex items-center justify-between gap-6 px-5 py-2 shrink-0" style={{ background: "var(--nx-bg)", color: "var(--nx-dim)", fontSize: 13 }}>
         <span className="flex items-center gap-5">

@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TopologyNode } from "@/lib/nexus/api";
 import { buildRooms, RECORDS_ID, str, type Room } from "@/lib/nexus/office";
 import { FLOORS, RECORDS_FLOOR } from "@/lib/nexus/theme";
+import { describeEvent, KIND_COLOR, type IngestEvent } from "@/lib/nexus/events";
 
 interface OfficeFloorProps {
   data: Parameters<typeof buildRooms>[0];
   highlightIds: string[];
   onNodeClick: (node: TopologyNode) => void;
+  /** Latest ingested event; each new one plays a short scene on the floor. */
+  event?: IngestEvent | null;
 }
 
 const ROOM_W = 648;
@@ -134,11 +137,123 @@ function Bubble({ cx, bottom, lines, fill }: { cx: number; bottom: number; lines
   );
 }
 
-export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProps) {
+/** Slot positions inside a room. Shared by the render pass and the animation anchors. */
+type Metrics = ReturnType<typeof roomMetrics>;
+const boardPos = (m: Metrics, room: Room, k: number) => ({
+  x: m.sideBySide ? ROOM_W - PAD - (room.decisions.length - k) * BOARD_SLOT + 12 : PAD + (k % m.boardCols) * BOARD_SLOT,
+  y: WALL_H + 14 + (m.sideBySide ? 0 : Math.floor(k / m.boardCols) * (BOARD_H + 14)),
+});
+const rackPos = (m: Metrics, k: number) => ({
+  x: PAD + (k % m.rackCols) * RACK_SLOT + 12,
+  y: WALL_H + (m.sideBySide ? 0 : m.boardsH) + 8 + Math.floor(k / m.rackCols) * RACK_ROW_H,
+});
+const deskPos = (m: Metrics, k: number) => ({
+  x: PAD + (k % m.deskCols) * DESK_SLOT + 10,
+  y: WALL_H + m.topH + 14 + Math.floor(k / m.deskCols) * DESK_ROW_H,
+});
+
+/*
+ * Motion. The timings and the idea that status is shown by movement come from the office scene of
+ * Munder Difflin (MIT, https://github.com/HarnessMD/munder-difflin): avatars walk in from the door,
+ * monitors light up with scrolling lines and a blinking cursor, work shows as a pulsing halo,
+ * messages fly desk to desk as envelopes on an arc and end in a small ring. The code here is our own.
+ */
+const ENV_SPEED = 230; // units per second
+const ENV_ARC = 38;
+const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+function Envelope({ from, to, color, onDone }: { from: { x: number; y: number }; to: { x: number; y: number }; color: string; onDone: () => void }) {
+  const g = useRef<SVGGElement>(null);
+  const body = useRef<SVGGElement>(null);
+  const ring = useRef<SVGCircleElement>(null);
+  useEffect(() => {
+    const dist = Math.hypot(to.x - from.x, to.y - from.y);
+    const dur = Math.min(2, Math.max(0.8, dist / ENV_SPEED));
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const el = (now - t0) / 1000;
+      const node = g.current;
+      if (!node) return;
+      if (el < dur) {
+        const e = ease(el / dur);
+        const x = from.x + (to.x - from.x) * e;
+        const y = from.y + (to.y - from.y) * e - ENV_ARC * Math.sin(Math.PI * e);
+        node.setAttribute("transform", `translate(${Math.round(x)}, ${Math.round(y)})`);
+        const fade = Math.min(1, el / 0.14, Math.max(0, (dur - el) / 0.22));
+        node.style.opacity = String(fade);
+        body.current?.setAttribute("transform", `rotate(${(Math.sin(el * 6) * 0.12 * 180) / Math.PI})`);
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      const b = (el - dur) / 0.34; // arrival ring
+      node.setAttribute("transform", `translate(${to.x}, ${to.y})`);
+      if (body.current) body.current.style.display = "none";
+      if (ring.current) {
+        ring.current.style.display = "block";
+        ring.current.setAttribute("r", String(3 + Math.min(b, 1) * 14));
+        ring.current.setAttribute("stroke-opacity", String(1 - Math.min(b, 1)));
+      }
+      node.style.opacity = "1";
+      if (b >= 1) {
+        onDone();
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // from, to and color are fixed for the lifetime of one envelope
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <g ref={g} style={{ opacity: 0 }} pointerEvents="none" transform={`translate(${from.x}, ${from.y})`}>
+      <g ref={body} shapeRendering="crispEdges">
+        <rect x="-8" y="-6" width="16" height="12" fill={color} stroke={C.ink} strokeWidth="2" />
+        <path d="M-8 -6 L0 2 L8 -6" fill="none" stroke={C.ink} strokeWidth="2" />
+      </g>
+      <circle ref={ring} r="3" fill="none" stroke={C.lemon} strokeWidth="3" style={{ display: "none" }} />
+    </g>
+  );
+}
+
+function Confetti({ colors }: { colors: string[] }) {
+  return (
+    <g pointerEvents="none" shapeRendering="crispEdges">
+      {Array.from({ length: 12 }).map((_, i) => {
+        const a = (i / 12) * Math.PI * 2;
+        return (
+          <rect
+            key={i}
+            className="nx-confetti"
+            x={BOARD_W / 2}
+            y={BOARD_H / 2}
+            width="5"
+            height="5"
+            fill={colors[i % colors.length]}
+            style={{ ["--tx" as string]: `${Math.cos(a) * 80}px`, ["--ty" as string]: `${Math.sin(a) * 56 - 12}px` }}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+export function OfficeFloor({ data, highlightIds, onNodeClick, event = null }: OfficeFloorProps) {
   const { rooms, supersededBy, incidents, personNote } = useMemo(() => buildRooms(data), [data]);
   const hl = useMemo(() => new Set(highlightIds), [highlightIds]);
   const [hover, setHover] = useState<string | null>(null);
   const dim = (id: string) => (hl.size > 0 && !hl.has(id) ? 0.38 : 1);
+
+  const reduced = useRef(false);
+  useEffect(() => {
+    reduced.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+  const [envelopes, setEnvelopes] = useState<Array<{ key: number; from: { x: number; y: number }; to: { x: number; y: number }; color: string }>>([]);
+  const [active, setActive] = useState<Record<string, { seq: number; label: string; alert: boolean }>>({});
+  const [alerts, setAlerts] = useState<Record<string, number>>({});
+  const [fx, setFx] = useState<{ slam: string[]; pop: string[] }>({ slam: [], pop: [] });
+  const anchors = useRef(new Map<string, { x: number; y: number }>());
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 1100, h: 800 });
@@ -167,6 +282,85 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
   const totalH = (rowY[rowY.length - 1] ?? GAP) + (rowHeights[rowHeights.length - 1] ?? 0) + GAP;
   // fit the whole floor in view; only scroll if the window is tiny
   const scale = Math.max(0.5, Math.min(1.5, box.w / totalW, box.h / totalH));
+
+  // where things are, in floor coordinates, so envelopes know where to fly
+  const next = new Map<string, { x: number; y: number }>();
+  rooms.forEach((room, i) => {
+    const m = metrics[i];
+    const ox = GAP + (i % cols) * (ROOM_W + GAP);
+    const oy = rowY[Math.floor(i / cols)];
+    room.people.forEach((p, k) => {
+      const d = deskPos(m, k);
+      next.set(p.id, { x: ox + d.x + 54, y: oy + d.y + 34 });
+    });
+    room.services.forEach((sv, k) => {
+      const d = rackPos(m, k);
+      next.set(sv.id, { x: ox + d.x + 32, y: oy + d.y + 24 });
+    });
+    room.decisions.forEach((dc, k) => {
+      const d = boardPos(m, room, k);
+      next.set(dc.id, { x: ox + d.x + BOARD_W / 2, y: oy + d.y + BOARD_H / 2 });
+    });
+  });
+  anchors.current = next;
+
+  // a new ingested event: the actor reacts and an envelope flies to what the event is about
+  useEffect(() => {
+    if (!event || reduced.current) return undefined;
+    const a = anchors.current;
+    const actor = event.actor ? a.get(event.actor) : undefined;
+    const svc = event.refs.service_ids?.find((id) => a.has(id));
+    const targetId = svc ?? (event.refs.decision_id && a.has(event.refs.decision_id) ? event.refs.decision_id : undefined);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const isIncident = event.kind === "incident";
+    if (event.actor && actor) {
+      setActive((cur) => ({ ...cur, [event.actor as string]: { seq: event.seq, label: describeEvent(event), alert: isIncident } }));
+      timers.push(
+        setTimeout(() => {
+          setActive((cur) => {
+            if (cur[event.actor as string]?.seq !== event.seq) return cur;
+            const { [event.actor as string]: _gone, ...rest } = cur;
+            return rest;
+          });
+        }, 2400),
+      );
+    }
+    if (actor && targetId) {
+      const to = a.get(targetId) as { x: number; y: number };
+      timers.push(
+        setTimeout(() => {
+          setEnvelopes((cur) => [...cur.slice(-5), { key: event.seq, from: { x: actor.x, y: actor.y - 22 }, to: { x: to.x, y: to.y - 8 }, color: KIND_COLOR[event.kind ?? ""] ?? C.cream }]);
+        }, 260),
+      );
+    }
+    if (isIncident && svc) {
+      setAlerts((cur) => ({ ...cur, [svc]: event.seq }));
+      timers.push(setTimeout(() => setAlerts((cur) => (cur[svc] === event.seq ? Object.fromEntries(Object.entries(cur).filter(([k]) => k !== svc)) : cur)), 3000));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [event]);
+
+  // boards that were just replaced get stamped, and new boards pop onto the wall
+  const prevBoards = useRef<Map<string, boolean> | null>(null);
+  useEffect(() => {
+    const now = new Map<string, boolean>();
+    rooms.forEach((r) => r.decisions.forEach((d) => now.set(d.id, str(d.properties?.status) === "superseded" || supersededBy.has(d.id))));
+    const prev = prevBoards.current;
+    prevBoards.current = now;
+    if (!prev || prev.size === 0 || reduced.current) return undefined;
+    const slam: string[] = [];
+    const pop: string[] = [];
+    now.forEach((dead, id) => {
+      const was = prev.get(id);
+      if (was === undefined) pop.push(id);
+      else if (!was && dead) slam.push(id);
+    });
+    if (!slam.length && !pop.length) return undefined;
+    setFx({ slam, pop });
+    const t = setTimeout(() => setFx({ slam: [], pop: [] }), 2200);
+    return () => clearTimeout(t);
+  }, [rooms, supersededBy]);
+  const dropEnvelope = useCallback((key: number) => setEnvelopes((cur) => cur.filter((e) => e.key !== key)), []);
 
   const open = (n: TopologyNode) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -220,7 +414,6 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
           const isRecords = room.id === RECORDS_ID;
           const floor = isRecords ? RECORDS_FLOOR : FLOORS[i % FLOORS.length];
           const floorIdx = isRecords ? FLOORS.length : i % FLOORS.length;
-          const deskTop = WALL_H + m.topH;
 
           return (
             <g key={room.id} transform={`translate(${x}, ${y})`}>
@@ -242,8 +435,9 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
 
               {/* decision boards on the back wall */}
               {room.decisions.map((d, k) => {
-                const bx = m.sideBySide ? ROOM_W - PAD - (room.decisions.length - k) * BOARD_SLOT + 12 : PAD + (k % m.boardCols) * BOARD_SLOT;
-                const by = WALL_H + 14 + (m.sideBySide ? 0 : Math.floor(k / m.boardCols) * (BOARD_H + 14));
+                const { x: bx, y: by } = boardPos(m, room, k);
+                const slam = fx.slam.includes(d.id);
+                const pop = fx.pop.includes(d.id);
                 const dead = str(d.properties?.status) === "superseded" || supersededBy.has(d.id);
                 const successor = supersededBy.get(d.id) || str(d.properties?.superseded_by);
                 const summary = str(d.properties?.summary).replace(/^[A-Z]+-\d+:\s*/, "").replace(/^Deploying DEC-\d+:\s*/, "");
@@ -261,6 +455,7 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
                     onKeyDown={key(d)}
                     data-testid={`board-${d.id}`}
                   >
+                    <g className={slam ? "nx-slam" : pop ? "nx-pop" : undefined} style={{ transformBox: "fill-box", transformOrigin: "center" }}>
                     <title>{`${d.id}: ${summary}`}</title>
                     <rect x="3" y="4" width={BOARD_W} height={BOARD_H} fill={C.ink} opacity="0.3" />
                     <rect className="nx-pick" width={BOARD_W} height={BOARD_H} fill={dead ? C.paperOld : C.paper} stroke={C.ink} strokeWidth="2" />
@@ -291,15 +486,17 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
                     {hl.has(d.id) && (
                       <rect className="nx-ring" x="-5" y="-5" width={BOARD_W + 10} height={BOARD_H + 10} fill="none" stroke={C.lemon} strokeWidth="3" />
                     )}
+                    </g>
+                    {pop && !dead && <Confetti colors={[floor.accent, C.lemon, C.cream, C.sky]} />}
                   </g>
                 );
               })}
 
               {/* server racks */}
               {room.services.map((s, k) => {
-                const rx = PAD + (k % m.rackCols) * RACK_SLOT + 12;
-                const ry = WALL_H + (m.sideBySide ? 0 : m.boardsH) + 8 + Math.floor(k / m.rackCols) * RACK_ROW_H;
+                const { x: rx, y: ry } = rackPos(m, k);
                 const down = incidents.has(s.id);
+                const pulsing = alerts[s.id] !== undefined;
                 return (
                   <g
                     key={s.id}
@@ -315,6 +512,10 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
                   >
                     <title>{`${s.name} · tier ${str(s.properties?.tier) || "-"}${down ? " · incident open" : ""}`}</title>
                     <circle className="nx-light" cx="32" cy="28" r="50" fill={down ? C.coral : C.sky} opacity="0.14" />
+                    {pulsing &&
+                      [0, 0.3, 0.6].map((d) => (
+                        <circle key={d} className="nx-ringout" cx="32" cy="28" r="10" fill="none" stroke={C.coral} strokeWidth="3" style={{ animationDelay: `${d}s` }} />
+                      ))}
                     <rect className="nx-pick" width="64" height="54" fill={C.rack} stroke={C.ink} strokeWidth="3" />
                     {[0, 1, 2].map((r) => (
                       <g key={r}>
@@ -350,15 +551,20 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
 
               {/* people at desks */}
               {room.people.map((p, k) => {
-                const dx = PAD + (k % m.deskCols) * DESK_SLOT + 10;
-                const dy = deskTop + 14 + Math.floor(k / m.deskCols) * DESK_ROW_H;
+                const { x: dx, y: dy } = deskPos(m, k);
+                const act = active[p.id];
+                const doorX = ROOM_W / 2 - dx - 39;
+                const doorY = h - dy - 6 + 8;
+                const walk = Math.min(2.8, Math.max(1.1, Math.hypot(doorX, doorY) / 170));
+                const delay = i * 0.25 + k * 0.16;
                 const fullName = str(p.properties?.name) || p.name;
                 const role = str(p.properties?.role);
                 const note = personNote.get(p.id);
                 const lit = hl.has(p.id);
                 const hovered = hover === p.id;
                 let bubble: { lines: string[]; fill: string } | null = null;
-                if (hovered && note) bubble = { lines: [note.verb, clip(note.target, 18)], fill: note.kind === "own" ? "#a9ddf5" : "#b6f0cf" };
+                if (act) bubble = { lines: wrap(act.label, 16, 2), fill: act.alert ? "#ffc9c4" : "#a9ddf5" };
+                else if (hovered && note) bubble = { lines: [note.verb, clip(note.target, 18)], fill: note.kind === "own" ? "#a9ddf5" : "#b6f0cf" };
                 return (
                   <g
                     key={p.id}
@@ -375,9 +581,16 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
                   >
                     <title>{`${fullName}${role ? ` · ${role}` : ""}`}</title>
                     <circle className="nx-light" cx="54" cy="56" r="48" fill={C.sky} opacity="0.1" />
+                    {act && <circle key={`glow-${act.seq}`} className="nx-glow" cx="54" cy="52" r="46" fill={floor.accent} />}
                     <rect x="38" y="20" width="32" height="12" fill="#26323c" stroke={C.ink} strokeWidth="2" />
                     <g transform="translate(39, 6)" className={lit ? "nx-bob" : undefined}>
-                      <Sprite seed={p.id} shirt={floor.accent} />
+                      <g className="nx-enter" style={{ ["--fx" as string]: `${doorX}px`, ["--fy" as string]: `${doorY}px`, ["--dur" as string]: `${walk}s`, ["--delay" as string]: `${delay}s` }}>
+                        <g className="nx-stride" style={{ ["--bobs" as string]: Math.round(walk / 0.34), ["--delay" as string]: `${delay}s` }}>
+                          <g key={act ? `hop-${act.seq}` : "rest"} className={act ? "nx-hop" : undefined}>
+                            <Sprite seed={p.id} shirt={floor.accent} />
+                          </g>
+                        </g>
+                      </g>
                     </g>
                     <g shapeRendering="crispEdges">
                       <rect x="2" y="38" width="104" height="38" fill={C.ink} />
@@ -385,15 +598,31 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
                       <rect x="4" y="40" width="100" height="6" fill={C.deskTop} />
                       <rect x="40" y="42" width="28" height="20" fill={C.ink} />
                       <rect x="42" y="44" width="24" height="14" fill={C.screen} />
-                      <rect x="45" y="47" width="12" height="2" fill={C.mint} />
-                      <rect x="45" y="51" width="17" height="2" fill={C.sky} />
+                      <svg x="42" y="44" width="24" height="14" overflow="hidden">
+                        <g className="nx-scr" style={{ animationDelay: `-${(hash(p.id) % 24) / 10}s` }}>
+                          {[2, 6, 10, 16, 20, 24].map((yy, n) => (
+                            <rect key={yy} x="3" y={yy} width={8 + ((hash(p.id) + n * 5) % 4) * 3} height="2" fill={n % 2 ? C.sky : C.mint} />
+                          ))}
+                        </g>
+                        <rect className="nx-cursor" x="3" y="10" width="3" height="2" fill="#fff" />
+                      </svg>
                       <rect x="42" y="66" width="24" height="5" fill="#d8cfae" />
                     </g>
                     <rect x="4" y="82" width="100" height="22" fill={C.cream} stroke={C.ink} strokeWidth="2" />
                     <text x="54" y="98" textAnchor="middle" className="nx-t-ui" fontSize="14" fontWeight="700" fill={C.ink}>
                       {clip(fullName, 13)}
                     </text>
-                    {bubble && <Bubble cx={54} bottom={2} lines={bubble.lines} fill={bubble.fill} />}
+                    {bubble && (
+                      <g key={act ? `b-${act.seq}` : "b"} className={act ? "nx-bubble-life" : undefined}>
+                        <Bubble cx={54} bottom={2} lines={bubble.lines} fill={bubble.fill} />
+                      </g>
+                    )}
+                    {act?.alert && (
+                      <g className="nx-alert" pointerEvents="none">
+                        <rect x="96" y="-2" width="18" height="18" fill={C.coral} stroke={C.ink} strokeWidth="2" />
+                        <text x="105" y="12" textAnchor="middle" className="nx-t-ui" fontSize="13" fontWeight="700" fill={C.ink}>!</text>
+                      </g>
+                    )}
                     {lit && <rect className="nx-ring" x="-2" y="-4" width="112" height="112" fill="none" stroke={C.lemon} strokeWidth="3" />}
                   </g>
                 );
@@ -401,6 +630,9 @@ export function OfficeFloor({ data, highlightIds, onNodeClick }: OfficeFloorProp
             </g>
           );
         })}
+        {envelopes.map((e) => (
+          <Envelope key={e.key} from={e.from} to={e.to} color={e.color} onDone={() => dropEnvelope(e.key)} />
+        ))}
       </svg>
     </div>
   );

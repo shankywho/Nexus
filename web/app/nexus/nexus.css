@@ -135,8 +135,43 @@
 .nx-blink { animation: nx-blink 1s steps(2, end) infinite; }
 .nx-ring { animation: nx-ring 1.4s steps(4, end) infinite; }
 
+/* ---- office floor motion ----
+   Timings follow the office scene of Munder Difflin (MIT): a walk in from the door, 0.6 s work pulse,
+   0.53 s cursor blink, 2.5 Hz alert, and a stamped, stepped feel. Everything is stepped, never eased,
+   to stay on the pixel grid. */
+@keyframes nx-enter {
+  from { transform: translate(var(--fx), var(--fy)); opacity: 0; }
+  6% { opacity: 1; }
+  to { transform: translate(0, 0); opacity: 1; }
+}
+.nx-enter { animation: nx-enter var(--dur, 1.6s) steps(28, end) var(--delay, 0s) backwards; }
+@keyframes nx-stride { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.nx-stride { animation: nx-stride 0.34s steps(2, end) var(--delay, 0s) var(--bobs, 4); }
+@keyframes nx-glow { 0%, 100% { opacity: 0.18; transform: scale(0.95); } 50% { opacity: 0.45; transform: scale(1.1); } }
+.nx-glow { transform-box: fill-box; transform-origin: center; animation: nx-glow 0.6s ease-in-out 4; mix-blend-mode: screen; pointer-events: none; }
+@keyframes nx-hop { 0% { transform: translateY(0); } 18% { transform: translateY(-5px); } 36% { transform: translateY(0); } 54% { transform: translateY(-3px); } 72%, 100% { transform: translateY(0); } }
+.nx-hop { animation: nx-hop 0.9s steps(6, end) 1; }
+@keyframes nx-scr { from { transform: translateY(0); } to { transform: translateY(-14px); } }
+.nx-scr { animation: nx-scr 2.4s steps(7, end) infinite; }
+@keyframes nx-cursor { 0%, 49% { opacity: 0.9; } 50%, 100% { opacity: 0; } }
+.nx-cursor { animation: nx-cursor 1.06s steps(1, end) infinite; }
+@keyframes nx-bubble-life { 0% { opacity: 0; transform: translateY(4px); } 5% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; } }
+.nx-bubble-life { animation: nx-bubble-life 2.4s steps(14, end) both; }
+@keyframes nx-alert { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+.nx-alert { animation: nx-alert 0.4s steps(2, end) infinite; }
+@keyframes nx-ringout { from { transform: scale(1); opacity: 0.9; } to { transform: scale(4.6); opacity: 0; } }
+.nx-ringout { transform-box: fill-box; transform-origin: center; animation: nx-ringout 0.9s steps(6, end) 3 both; pointer-events: none; }
+@keyframes nx-slam { 0% { transform: scale(1.3) rotate(-3deg); } 30% { transform: scale(0.94); } 55% { transform: scale(1.04) translateX(3px); } 75% { transform: translateX(-3px); } 100% { transform: scale(1); } }
+.nx-slam { animation: nx-slam 0.7s steps(8, end) 1; }
+@keyframes nx-pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
+.nx-pop { animation: nx-pop 0.5s steps(5, end) 1; }
+@keyframes nx-confetti { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(var(--tx), var(--ty)); opacity: 0; } }
+.nx-confetti { animation: nx-confetti 1.2s steps(10, end) 1 both; }
+
 @media (prefers-reduced-motion: reduce) {
-  .nx-bob, .nx-blink, .nx-ring { animation: none; }
+  .nx-bob, .nx-blink, .nx-ring, .nx-enter, .nx-stride, .nx-glow, .nx-hop, .nx-scr, .nx-cursor,
+  .nx-bubble-life, .nx-alert, .nx-ringout, .nx-slam, .nx-pop, .nx-confetti { animation: none; }
+  .nx-confetti { display: none; }
 }
 
 @layer base {

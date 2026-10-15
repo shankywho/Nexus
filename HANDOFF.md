@@ -13,6 +13,8 @@ State as of 2026-10-15. Suggest `/clear` before the next phase.
 - Web: eslint, `npm test` 6 pass, `npm run build`.
 - `make eval`: NEXUS 1.00 accuracy, 0.00 stale; flat RAG 0.08 / 0.42.
 
+- Live floor motion (D-014); SSE now reaches the browser (named events plus `no-transform`).
+
 ## Not verified
 - A real Anthropic call. The live path was exercised with a faked model reply only.
 - Playwright e2e (`web/e2e/tests/nexus.spec.ts`).

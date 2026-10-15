@@ -14,6 +14,21 @@ from nexus_api.services.tracing import get_tracing_store
 logger = logging.getLogger(__name__)
 
 
+def summarize_event(ev: dict[str, Any]) -> dict[str, Any]:
+    """The part of a source event the UI needs to animate it: who did what, to which entities."""
+    refs = ev.get("refs") or {}
+    return {
+        "id": ev.get("id"),
+        "kind": ev.get("kind"),
+        "actor": ev.get("actor"),
+        "channel": ev.get("channel"),
+        "ts": ev.get("ts"),
+        "text": str(ev.get("text") or "")[:140],
+        "refs": {k: v for k, v in refs.items() if v},
+        "supersedes": ev.get("supersedes"),
+    }
+
+
 class SyncReplayer:
     """Manages playback of fixtures/company/events.jsonl with real-time SSE progress."""
 
@@ -94,6 +109,7 @@ class SyncReplayer:
 
                 progress_data = self.get_status()
                 progress_data["current_event_id"] = ev.get("id")
+                progress_data["event"] = summarize_event(ev)
                 await eventbus.publish("sync.progress", progress_data)
 
                 if interval_ms > 0:
