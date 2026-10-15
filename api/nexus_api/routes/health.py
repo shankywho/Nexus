@@ -25,6 +25,7 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/health", response_model=HealthResponse)
+@router.get("/healthz", response_model=HealthResponse)
 def get_health() -> dict[str, Any]:
     """Return health status of API, FalkorDB connection, and graph node counts."""
     settings = get_settings()
