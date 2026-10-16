@@ -30,10 +30,11 @@ Flat vector search over team history returns superseded answers. A migration to 
 ├── web/            Next.js office HUD (/nexus)
 ├── fixtures/       Synthetic Acme Payments data: events, people, services, docs, gold questions
 ├── scripts/        Seed, replay, evaluate and reset tooling
-├── docs/           Architecture, API, decisions, contract checks, build spec
+├── docs/           Architecture, API, data model, queries, 3-minute demo script
 ├── .github/        CI workflow
 ├── docker-compose.yml
 ├── Makefile
+├── DECISIONS.md    Engineering & UI redesign decisions
 └── MODIFICATIONS.md  History note on the removed upstream FalkorDB Browser code
 ```
 
@@ -135,12 +136,10 @@ Benchmarked using `uv run --project api python scripts/loadtest.py --workers 10 
 | [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) | **Multi-Track Architecture & Proof:** Full breakdown of all 3 tracks, Mermaid diagrams, MCP tools, and Rule 3 proof |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | **Graph Data Model:** Node labels, edge types, and properties across `nexus_company`, `nexus_temporal`, `nexus_docs`, and `nexus_memory_<tenant>` |
 | [docs/QUERIES.md](docs/QUERIES.md) | **Cypher & Graph Algorithms:** Every query and algorithm (`algo.pageRank`, `algo.betweenness`, BFS) the product depends on |
-| [docs/DEMO.md](docs/DEMO.md) | **Four-minute demo video script** walking through the live story across all 3 tracks |
+| [docs/DEMO.md](docs/DEMO.md) | **Three-minute demo video script** walking through the live story across all 3 tracks |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram, ingest sequence, supersession lifecycle, graph schema, code layout |
 | [docs/API.md](docs/API.md) | Endpoint reference |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Engineering decision log |
-| [docs/CONTRACTS.md](docs/CONTRACTS.md) | Verified integration contracts with upstream libraries |
-| [docs/BUILD_SPEC.md](docs/BUILD_SPEC.md) | Original build specification |
+| [DECISIONS.md](DECISIONS.md) | Comprehensive engineering and design decision log |
 
 ## Hackathon tracks
 
