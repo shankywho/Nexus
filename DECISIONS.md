@@ -29,7 +29,7 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 ### Phase 3: Status Semantics & Zero-State Colours
 - **Unified Single-Source Status:** Centralized all status computations into `useSystemStatus()`. Eliminates discrepancy between header and footer status reporting.
 - **Cold-Start Red Elimination:** Resolved the race condition where SSE stream disconnected status was displayed as red `stream down` on cold start even when FalkorDB and API are healthy. Set stream status to muted grey `stream idle` on cold start.
-- **Supersede Replay Flash:** Added `nx-flash` 8-frame `steps(8, end)` CSS animation on the replaced decisions counter chip when superseded decisions increase during sync replay.
+- **Supersede Replay Flash:** Added `nx-flash` 8-fharame `steps(8, end)` CSS animation on the replaced decisions counter chip when superseded decisions increase during sync replay.
 - **Tenant Display Consistency:** Ensured tenant display strictly uses brand name ("Acme Payments") on screen, with internal identifier `acme` restricted solely to tooltips and API parameters.
 - **Deliverables:** Verified zero red on cold start while API is up, verified clean build with 0 ESLint warnings, and saved screenshots to `docs/img/ui/phase-3-1440x900.png` and `docs/img/ui/phase-3-1920x1080.png`.
 
@@ -151,6 +151,19 @@ This log records design decisions, tradeoffs, and judgment calls made during the
      - Nodes outside the hop boundary dissolve to 0.05 opacity with labels hidden; non-neighbor edges fade to 0.03 opacity, eliminating visual clutter.
   4. **Live FalkorDB Cypher Status Banner:**
      - Monospace floating banner at bottom-left displaying active Cypher queries during audits or tour steps with execution latency tags (`0.4ms`), highlighting FalkorDB's role to hackathon judges.
+
+## Demo Readiness & Full Stack Verification (All 3 Hackathon Tracks)
+
+- **Track 1 (Autonomous AI Agents):**
+  - Upgraded `/api/agents/run` in `nexus_api/routes/agents.py` to auto-populate title, service_id, and description directly from `fixtures/company/demo_incidents.json` if not provided.
+  - Sized and flex-locked the incident selector with `min-w-0` and button with `shrink-0` in `AgentPanel.tsx`, ensuring `⚡ PAGE AGENTS` remains prominently visible without horizontal compression.
+  - Verified Scout -> Planner -> Scribe multi-agent coordination with real FalkorDB tool execution, step traces, and episodic memory persistence in under 700ms.
+- **Track 2 (Graph Algorithms & Temporal Audit Workflows):**
+  - Audits (`/api/audits/who-owns-what`, `/api/audits/decision-trace`, `/api/audits/stale-knowledge`, `/api/audits/bus-factor`) now support both `GET` and `POST` methods with clean RESTful aliases (`/owners`, `/trace`, `/stale`), returning 100% success across both CLI curls and frontend clicks.
+  - Preserved ego-network hop filtering (`1-HOP`, `2-HOPS`) and directional flow particles.
+- **Track 3 (Graph RAG / Temporal Company Brain):**
+  - `/api/ask` evaluates natural language questions against FalkorDB Cypher paths, returning current vs superseded sources, confidence, and owner attribution with graceful fallback when external LLM credit balances are zero.
+  - Preserved real-time sync replay (`/api/sync/replay` via SSE) updating the decision ledger, flipping whiteboard notes to amber, and animating flying envelopes across the office floor.
 
 
 
