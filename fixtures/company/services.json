@@ -6,6 +6,7 @@
       "tier": 1,
       "team_id": "platform",
       "maintainer_ids": ["priya"],
+      "depends_on": [],
       "description": "Distributed session management and token caching service"
     },
     {
@@ -14,6 +15,7 @@
       "tier": 1,
       "team_id": "platform",
       "maintainer_ids": ["arjun", "vikram"],
+      "depends_on": ["session-store"],
       "description": "Edge API routing, mTLS termination, and JWT authentication"
     },
     {
@@ -22,6 +24,7 @@
       "tier": 1,
       "team_id": "payments-core",
       "maintainer_ids": ["kabir"],
+      "depends_on": [],
       "description": "Double-entry immutable balance transaction ledger"
     },
     {
@@ -30,6 +33,7 @@
       "tier": 1,
       "team_id": "payments-core",
       "maintainer_ids": ["rohan"],
+      "depends_on": ["ledger"],
       "description": "Disbursement pipeline for ACH, RTP, and international wires"
     },
     {
@@ -38,6 +42,7 @@
       "tier": 2,
       "team_id": "payments-core",
       "maintainer_ids": ["ananya"],
+      "depends_on": ["ledger"],
       "description": "Real-time decision service evaluating payment risk scores"
     },
     {
@@ -46,6 +51,7 @@
       "tier": 2,
       "team_id": "growth",
       "maintainer_ids": ["david"],
+      "depends_on": [],
       "description": "Transactional emails, SMS alerts, and webhook deliveries"
     },
     {
@@ -54,6 +60,7 @@
       "tier": 1,
       "team_id": "growth",
       "maintainer_ids": ["sarah"],
+      "depends_on": ["auth-gateway", "session-store", "notifications"],
       "description": "Hosted checkout page and embedded payment elements"
     },
     {
@@ -62,6 +69,7 @@
       "tier": 2,
       "team_id": "sre",
       "maintainer_ids": ["aisha", "meera"],
+      "depends_on": [],
       "description": "OpenTelemetry collector and timeseries aggregation cluster"
     }
   ],

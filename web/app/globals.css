@@ -6,3 +6,14 @@ body {
   margin: 0;
   background: #0c1720;
 }
+
+/* Hide Next.js floating dev indicator button / portal */
+nextjs-portal,
+[data-nextjs-dev-tools-button],
+[data-nextjs-toast],
+#nextjs-dev-tools {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+

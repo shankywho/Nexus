@@ -9,9 +9,35 @@ export interface Room {
 }
 
 export const RECORDS_ID = "__records__";
+export const AGENT_POD_ID = "__agent_pod__";
+
+export const AGENT_NODES: TopologyNode[] = [
+  {
+    id: "agent-scout",
+    name: "Scout",
+    label: "Agent",
+    group: "Agent",
+    properties: { role: "Graph Investigator", is_agent: true, agent_name: "scout" },
+  },
+  {
+    id: "agent-planner",
+    name: "Planner",
+    label: "Agent",
+    group: "Agent",
+    properties: { role: "Incident Strategist", is_agent: true, agent_name: "planner" },
+  },
+  {
+    id: "agent-scribe",
+    name: "Scribe",
+    label: "Agent",
+    group: "Agent",
+    properties: { role: "Memory & Actions", is_agent: true, agent_name: "scribe" },
+  },
+];
 
 const idOf = (end: string | TopologyNode): string => (typeof end === "string" ? end : end.id);
 export const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
+
 
 const VERB: Record<string, string> = {
   OWNS: "owns",
@@ -96,6 +122,59 @@ export function buildRooms(data: TopologyData) {
   const rooms = Array.from(teams.values()).filter((r) => r.people.length + r.services.length + r.decisions.length > 0);
   rooms.sort((a, b) => b.people.length + b.services.length - (a.people.length + a.services.length));
   if (records.decisions.length) rooms.push(records);
+
+  if (data.nodes.length > 0) {
+    const agentPod: Room = {
+      id: AGENT_POD_ID,
+      name: "Agent Pod · Autonomous Triage",
+      people: AGENT_NODES,
+      services: [
+        {
+          id: "mcp-runtime",
+          name: "MCP Runtime",
+          label: "Service",
+          group: "Service",
+          properties: { tier: "P0", role: "MCP Server & Agent Tools" },
+        },
+        {
+          id: "falkor-memory",
+          name: "Memory Engine",
+          label: "Service",
+          group: "Service",
+          properties: { tier: "P0", role: "Native FalkorDB Memory Graph" },
+        },
+      ],
+      decisions: [
+        {
+          id: "PLAYBOOK-83",
+          name: "INC-83 Playbook",
+          label: "Decision",
+          group: "Decision",
+          properties: {
+            status: "live",
+            summary: "Checkout 5xx: Blast Radius ➔ PageRank ➔ Owner ➔ Review DEC-017",
+          },
+        },
+        {
+          id: "PLAYBOOK-84",
+          name: "INC-84 Playbook",
+          label: "Decision",
+          group: "Decision",
+          properties: {
+            status: "live",
+            summary: "SMS Drop: Episodic Recall ➔ Secondary Provider Failover",
+          },
+        },
+      ],
+    };
+    rooms.push(agentPod);
+    personNote.set("agent-scout", { verb: "investigates", target: "Graph dependencies", kind: "own" });
+    personNote.set("agent-planner", { verb: "plans", target: "Triage & playbooks", kind: "own" });
+    personNote.set("agent-scribe", { verb: "records", target: "Memory & actions", kind: "own" });
+  }
+
   return { rooms, supersededBy, incidents, personNote, serviceOwners, decisionService, personTeam, serviceTeam };
+
+
 }
 

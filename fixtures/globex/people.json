@@ -1,0 +1,21 @@
+{
+  "teams": [
+    { "id": "globex-core", "name": "Globex Core Systems" }
+  ],
+  "people": [
+    {
+      "id": "hank",
+      "name": "Hank Scorpio",
+      "role": "Chief Technology Officer",
+      "team_id": "globex-core",
+      "email_hash": "a1b2c3d4e5f60718"
+    },
+    {
+      "id": "homer",
+      "name": "Homer Simpson",
+      "role": "Nuclear Infrastructure Lead",
+      "team_id": "globex-core",
+      "email_hash": "b2c3d4e5f6071829"
+    }
+  ]
+}

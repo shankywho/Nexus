@@ -180,3 +180,192 @@ export async function fetchHealth(): Promise<Health> {
   }
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Agent Runtime & Memory APIs (Tracks 1 & 2)
+// ---------------------------------------------------------------------------
+
+export interface DemoIncident {
+  id: string;
+  title: string;
+  severity: string;
+  service_id: string;
+  description: string;
+  suspected_cause: string;
+  reported_by: string;
+  created_at: string;
+}
+
+export interface AgentStepTrace {
+  step_n: number;
+  agent: string;
+  tool: string;
+  args: Record<string, unknown>;
+  cypher?: string;
+  rows_returned?: number;
+  latency_ms?: number;
+  touched_entity_ids?: string[];
+  output?: Record<string, unknown>;
+}
+
+export interface AgentTask {
+  id: string;
+  run_id: string;
+  incident_id: string;
+  status: "open" | "claimed" | "completed";
+  assigned_to: string;
+  handoffs?: Array<{
+    from_agent: string;
+    to_agent: string;
+    reason: string;
+    ts: string;
+    note?: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentRunResponse {
+  run_id: string;
+  incident_id: string;
+  status: string;
+  final_output: string;
+  steps: AgentStepTrace[];
+  tasks: AgentTask[];
+  memory_summary?: {
+    episode_id?: string;
+    procedure_name?: string;
+    facts_recorded?: number;
+  };
+}
+
+export interface MemoryEpisode {
+  id: string;
+  incident_id: string;
+  summary: string;
+  outcome: string;
+  entities_touched: string[];
+  created_at: string;
+}
+
+export interface MemoryFact {
+  id: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  confidence: number;
+  valid_at: string;
+  invalid_at?: string | null;
+  superseded_by?: string | null;
+}
+
+export interface MemoryProcedure {
+  name: string;
+  incident_pattern: string;
+  step_sequence: string[];
+  success_count: number;
+  last_executed: string;
+}
+
+export async function fetchDemoIncidents(): Promise<DemoIncident[]> {
+  const res = await fetch(`${BASE_URL}/agents/incidents`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch demo incidents: ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.incidents ?? [];
+}
+
+export async function triggerAgentRun(
+  incidentId: string,
+  tenant = "acme"
+): Promise<AgentRunResponse> {
+  const res = await fetch(`${BASE_URL}/agents/run`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Tenant": tenant,
+    },
+    body: JSON.stringify({ incident_id: incidentId, dry_run: false }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Agent run failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchAgentTasks(
+  tenant = "acme",
+  status?: string
+): Promise<AgentTask[]> {
+  const url = status
+    ? `${BASE_URL}/agents/tasks?status=${encodeURIComponent(status)}`
+    : `${BASE_URL}/agents/tasks`;
+  const res = await fetch(url, {
+    headers: { "X-Tenant": tenant },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch agent tasks: ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.tasks ?? [];
+}
+
+export async function fetchRunTrace(
+  runId: string,
+  tenant = "acme"
+): Promise<AgentRunResponse> {
+  const res = await fetch(`${BASE_URL}/agents/runs/${encodeURIComponent(runId)}`, {
+    headers: { "X-Tenant": tenant },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch run trace: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchMemoryEpisodes(tenant = "acme"): Promise<MemoryEpisode[]> {
+  const res = await fetch(`${BASE_URL}/memory/episodes`, {
+    headers: { "X-Tenant": tenant },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch episodes: ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.episodes ?? [];
+}
+
+export async function fetchMemoryFacts(tenant = "acme"): Promise<MemoryFact[]> {
+  const res = await fetch(`${BASE_URL}/memory/facts`, {
+    headers: { "X-Tenant": tenant },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch facts: ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.facts ?? [];
+}
+
+export async function fetchMemoryProcedures(tenant = "acme"): Promise<MemoryProcedure[]> {
+  const res = await fetch(`${BASE_URL}/memory/procedures`, {
+    headers: { "X-Tenant": tenant },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch procedures: ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.procedures ?? [];
+}
+
+export async function resetTenantMemory(tenant = "acme"): Promise<{ status: string }> {
+  const res = await fetch(`${BASE_URL}/memory/reset`, {
+    method: "POST",
+    headers: { "X-Tenant": tenant },
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to reset memory: ${res.statusText}`);
+  }
+  return res.json();
+}
+

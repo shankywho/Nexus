@@ -1,0 +1,31 @@
+{
+  "services": [
+    {
+      "id": "power-grid",
+      "name": "Cypress Creek Power Grid",
+      "tier": 1,
+      "team_id": "globex-core",
+      "maintainer_ids": ["homer"],
+      "depends_on": [],
+      "description": "Critical power generation and distribution telemetry"
+    },
+    {
+      "id": "seismic-monitor",
+      "name": "Seismic Telemetry Bridge",
+      "tier": 2,
+      "team_id": "globex-core",
+      "maintainer_ids": ["hank"],
+      "depends_on": ["power-grid"],
+      "description": "Geothermal pressure monitoring and emergency shutdown control"
+    }
+  ],
+  "projects": [
+    {
+      "id": "project-matterhorn",
+      "name": "Project Matterhorn",
+      "status": "active",
+      "team_id": "globex-core",
+      "owner_id": "hank"
+    }
+  ]
+}

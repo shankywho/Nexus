@@ -1,0 +1,24 @@
+{
+  "incidents": [
+    {
+      "id": "INC-83",
+      "title": "web-checkout 5xx spike",
+      "severity": "SEV-1",
+      "service_id": "web-checkout",
+      "description": "Sudden 5xx error rate surge on hosted payment element during peak checkout. Upstream auth-gateway reporting token verification latencies exceeding 2500ms.",
+      "suspected_cause": "Session token verification failure cascade across auth-gateway and session-store.",
+      "reported_by": "sarah",
+      "created_at": "2026-10-16T08:30:00Z"
+    },
+    {
+      "id": "INC-84",
+      "title": "notifications delivery failures",
+      "severity": "SEV-2",
+      "service_id": "notifications",
+      "description": "Outbound 2FA and transactional receipt SMS drops exceeding 35%. Downstream carrier gateway returning HTTP 429 and intermittent connection resets.",
+      "suspected_cause": "Single upstream SMS aggregator rate limiting during marketing campaign burst. Prior decision DEC-028 called for secondary provider failover.",
+      "reported_by": "david",
+      "created_at": "2026-10-16T09:15:00Z"
+    }
+  ]
+}

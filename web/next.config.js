@@ -2,6 +2,7 @@
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  devIndicators: false,
   images: { unoptimized: true },
   async headers() {
     return [

@@ -23,6 +23,9 @@ from nexus_api.routes.provenance import router as provenance_router
 from nexus_api.routes.runs import router as runs_router
 from nexus_api.routes.sources import router as sources_router
 from nexus_api.routes.sync import router as sync_router
+from nexus_api.mcp_server import router as mcp_router
+from nexus_api.routes.agents import router as agents_router
+from nexus_api.routes.memory import router as memory_router
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +82,9 @@ def create_app() -> FastAPI:
     app.include_router(events_router)
     app.include_router(admin_router)
     app.include_router(sources_router)
+    app.include_router(mcp_router)
+    app.include_router(agents_router)
+    app.include_router(memory_router)
 
     # Static /debug mounting
     static_dir = Path(__file__).parent / "static"

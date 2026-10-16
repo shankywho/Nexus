@@ -31,11 +31,16 @@ class EdgeType(str, Enum):
     DOCUMENTED_IN = "DOCUMENTED_IN"
     IMPLEMENTED_BY = "IMPLEMENTED_BY"
     AFFECTS = "AFFECTS"
+    DEPENDS_ON = "DEPENDS_ON"
     SUPERSEDES = "SUPERSEDES"
     REVERSES = "REVERSES"
     TRIGGERED = "TRIGGERED"
     KNOWS_ABOUT = "KNOWS_ABOUT"
     DERIVED_FROM = "DERIVED_FROM"
+    HANDOFF = "HANDOFF"
+    TOUCHED = "TOUCHED"
+    STEP = "STEP"
+    ASSIGNED_TO = "ASSIGNED_TO"
 
 
 class DecisionStatus(str, Enum):
@@ -69,6 +74,8 @@ class TeamNode(BaseGraphNode):
 class ServiceNode(BaseGraphNode):
     name: str
     tier: int = 1
+    description: str = ""
+    depends_on: list[str] = Field(default_factory=list)
 
 
 class ProjectNode(BaseGraphNode):

@@ -17,6 +17,7 @@ dependencies = [
     "uvicorn>=0.54.0",
     "python-multipart>=0.0.9",
     "anthropic>=1.14.0",
+    "mcp>=2.3.0",
 ]
 
 [project.optional-dependencies]

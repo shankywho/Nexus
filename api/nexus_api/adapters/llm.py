@@ -158,7 +158,6 @@ class AnthropicLLM(LLMClient):
         resp = await client.messages.create(
             model=self.model,
             max_tokens=1500,
-            temperature=0.0,
             system=system_prompt,
             messages=messages,
         )
@@ -214,14 +213,12 @@ def llm_mode() -> str:
 
 
 def get_llm_client() -> LLMClient:
-    """Return configured LLMClient instance."""
-    global _llm_instance
-    if _llm_instance is None:
-        mode = llm_mode()
-        if mode == "claude":
-            _llm_instance = AnthropicLLM()
-        elif mode == "openai":
-            _llm_instance = OpenAILLM()
-        else:
-            _llm_instance = MockLLM()
-    return _llm_instance
+    """Return configured LLMClient instance for the current mode."""
+    mode = llm_mode()
+    if mode == "claude":
+        return AnthropicLLM()
+    elif mode == "openai":
+        return OpenAILLM()
+    else:
+        return MockLLM()
+

@@ -113,6 +113,17 @@ def seed_people_and_services() -> None:
                 {"m_id": m_id, "s_id": s["id"], "org_id": org_id},
             )
 
+        for dep_id in s.get("depends_on", []):
+            falkor.query(
+                graph_name,
+                """
+                MATCH (src:Service {id: $src_id, org_id: $org_id})
+                MATCH (dst:Service {id: $dst_id, org_id: $org_id})
+                MERGE (src)-[:DEPENDS_ON {org_id: $org_id}]->(dst)
+                """,
+                {"src_id": s["id"], "dst_id": dep_id, "org_id": org_id},
+            )
+
     for p in sdata["projects"]:
         falkor.query(
             graph_name,

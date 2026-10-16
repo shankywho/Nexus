@@ -29,3 +29,18 @@ def require_ingest_token(x_ingest_token: str | None = Header(default=None)) -> N
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="A valid X-Ingest-Token header is required",
         )
+
+
+def get_tenant(x_tenant: str | None = Header(default=None)) -> str:
+    """Resolve tenant ID from X-Tenant header or fallback to NEXUS_ORG_ID."""
+    if x_tenant and x_tenant.strip():
+        return x_tenant.strip().lower()
+    return get_settings().NEXUS_ORG_ID.lower()
+
+
+def get_user(x_user: str | None = Header(default=None)) -> str:
+    """Resolve user ID from X-User header or default."""
+    if x_user and x_user.strip():
+        return x_user.strip()
+    return "default_user"
+

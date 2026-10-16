@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { fetchHealth, fetchTopology, runAudit, TopologyData, TopologyNode, type Health } from "@/lib/nexus/api";
+
 import { AuditBar, AuditKind } from "@/components/nexus/AuditBar";
 import { LiveTopology } from "@/components/nexus/LiveTopology";
 import { OfficeFloor } from "@/components/nexus/OfficeFloor";
 import { IngestionStreams } from "@/components/nexus/IngestionStreams";
 import { AskPanel } from "@/components/nexus/AskPanel";
+import { AgentPanel } from "@/components/nexus/AgentPanel";
 import { NodeInspector } from "@/components/nexus/NodeInspector";
 import { SimulateSyncButton } from "@/components/nexus/SimulateSyncButton";
 import { useIngestStream } from "@/lib/nexus/useIngestStream";
+import { useAgentStream } from "@/lib/nexus/useAgentStream";
 
 const EMPTY: TopologyData = { nodes: [], links: [] };
 
@@ -24,7 +27,11 @@ export default function NexusDashboard() {
   const [view, setView] = useState<"office" | "graph">("office");
   const [syncTick, setSyncTick] = useState(0);
   const { live, event } = useIngestStream();
+  const agentStream = useAgentStream();
+  const [tenant, setTenant] = useState<string>("acme");
+  const [sidebarTab, setSidebarTab] = useState<"agents" | "ask">("agents");
   const [llm, setLlm] = useState<Health["llm"] | null>(null);
+
 
   const loadTopology = useCallback(async () => {
     try {
@@ -87,24 +94,51 @@ export default function NexusDashboard() {
   const decisions = topology.nodes.filter((n) => n.group === "Decision");
   const dead = decisions.filter((n) => String(n.properties?.status) === "superseded").length;
 
+  const combinedHighlights = useMemo(() => {
+    return Array.from(new Set([...highlightIds, ...agentStream.touchedIds]));
+  }, [highlightIds, agentStream.touchedIds]);
+
   return (
     <div className="flex flex-col h-full">
       <header className="flex items-center justify-between gap-4 px-5 py-3 shrink-0" style={{ borderBottom: "4px solid var(--nx-ink)", background: "var(--nx-panel)" }}>
-        <div className="flex items-center gap-4 min-w-0">
-          <h1 className="nx-display" style={{ fontSize: 14, color: "var(--nx-lemon)", margin: 0 }}>NEXUS</h1>
-          <span style={{ color: "var(--nx-dim)" }}>Company brain for Acme Payments</span>
-          <span className="nx-chip">
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="nx-display shrink-0" style={{ fontSize: 14, color: "var(--nx-lemon)", margin: 0 }}>NEXUS</h1>
+          <span className="hidden lg:inline shrink-0" style={{ color: "var(--nx-dim)" }}>Company brain & autonomous agents</span>
+          <span className="nx-chip shrink-0">
             <span className={`nx-dot ${online === false ? "is-bad" : ""}`} />
             {online === false ? "api offline" : online ? "graph online" : "connecting"}
           </span>
           {llm && (
-            <span className="nx-chip" data-testid="llm-chip" title={llm.mode === "scripted" ? "Set ANTHROPIC_API_KEY in .env and restart the API to answer with Claude" : `Answers come from ${llm.model ?? llm.provider}`}>
+            <span className="nx-chip shrink-0" data-testid="llm-chip" title={llm.mode === "scripted" ? "Set ANTHROPIC_API_KEY in .env and restart the API to answer with Claude" : `Answers come from ${llm.model ?? llm.provider}`}>
               <span className={`nx-dot ${llm.mode === "scripted" ? "is-busy" : ""}`} />
               {llm.mode === "scripted" ? "offline answers" : `${llm.mode === "claude" ? "Claude" : "OpenAI"} live`}
             </span>
           )}
+          <span
+            className="nx-chip shrink-0"
+            style={{ color: "var(--nx-sky)" }}
+            title="WeMakeDevs x FalkorDB: Track 1 (Agents That Act), Track 2 (Memory & Coordination), Track 3 (Company Brain)"
+          >
+            Tracks 1, 2 & 3
+          </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Tenant Switcher (Track 2 Isolation) */}
+          <label className="nx-chip cursor-pointer" title="Track 2 Tenant Isolation: Switch between Acme and Globex memory graphs">
+            <span className="nx-dot" style={{ background: tenant === "globex" ? "var(--nx-coral)" : "var(--nx-mint)" }} />
+            <span style={{ color: "var(--nx-dim)" }}>Tenant:</span>
+            <select
+              value={tenant}
+              onChange={(e) => setTenant(e.target.value)}
+              className="bg-transparent nx-mono cursor-pointer"
+              style={{ border: "none", color: "var(--nx-lemon)", outline: "none", fontWeight: 700, padding: 0 }}
+              data-testid="tenant-select"
+            >
+              <option value="acme" style={{ background: "var(--nx-ink)", color: "var(--nx-cream)" }}>Acme Payments</option>
+              <option value="globex" style={{ background: "var(--nx-ink)", color: "var(--nx-cream)" }}>Globex Corp (Isolated)</option>
+            </select>
+          </label>
+
           <div className="flex gap-2" role="group" aria-label="View">
             {(["office", "graph"] as const).map((v) => (
               <button key={v} type="button" className="nx-btn" data-testid={`view-${v}`} aria-pressed={view === v} onClick={() => setView(v)}>
@@ -122,7 +156,7 @@ export default function NexusDashboard() {
           {activeAudit && (
             <>
               <span className="nx-chip">
-                {highlightIds.length} highlighted
+                {combinedHighlights.length} highlighted
               </span>
               {auditCypher && (
                 <code className="nx-mono truncate" style={{ color: "var(--nx-sky)", maxWidth: 520 }} title={auditCypher}>
@@ -137,10 +171,10 @@ export default function NexusDashboard() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 grid gap-3 px-3 pb-2" style={{ gridTemplateColumns: "minmax(0, 1fr) clamp(320px, 24vw, 380px)" }}>
+      <div className="flex-1 min-h-0 grid gap-3 px-3 pb-2" style={{ gridTemplateColumns: "minmax(0, 1fr) clamp(340px, 26vw, 420px)" }}>
         <main className="nx-panel flex flex-col min-h-0 min-w-0" aria-label="Office floor">
           <header className="nx-panel-head">
-            <span className="nx-display">{view === "office" ? "Acme Payments · floor 1" : "Decision graph"}</span>
+            <span className="nx-display">{view === "office" ? `${tenant === "globex" ? "Globex Corp" : "Acme Payments"} · floor 1` : "Decision graph"}</span>
             <span className="flex gap-2">
               <span className="nx-chip">{topology.nodes.length} things</span>
               <span className="nx-chip">{topology.links.length} links</span>
@@ -152,9 +186,17 @@ export default function NexusDashboard() {
           </header>
           <div className="relative flex-1 min-h-0">
             {view === "office" ? (
-              <OfficeFloor data={topology} highlightIds={highlightIds} onNodeClick={setInspected} event={event} />
+              <OfficeFloor
+                data={topology}
+                highlightIds={combinedHighlights}
+                onNodeClick={setInspected}
+                event={event}
+                latestStep={agentStream.latestStep}
+                latestHandoff={agentStream.latestHandoff}
+                activeAgent={agentStream.activeAgent}
+              />
             ) : (
-              <LiveTopology data={topology} highlightIds={highlightIds} onNodeClick={setInspected} />
+              <LiveTopology data={topology} highlightIds={combinedHighlights} onNodeClick={setInspected} />
             )}
             {online === false && (
               <p role="alert" className="absolute inset-0 flex items-center justify-center text-center p-8" style={{ background: "rgba(7,12,16,.85)" }}>
@@ -170,48 +212,89 @@ export default function NexusDashboard() {
           </div>
         </main>
 
-        <aside className="nx-panel flex flex-col min-h-0" aria-label="Ask the company brain">
+        <aside className="nx-panel flex flex-col min-h-0" aria-label="Agent Pod and Company Brain">
           <header className="nx-panel-head">
-            <span className="nx-display">Ask the brain</span>
-            <span className="nx-chip">
-              <span className="nx-dot" />
-              sources shown
-            </span>
+            <div className="flex gap-1.5" role="tablist">
+              <button
+                type="button"
+                onClick={() => setSidebarTab("agents")}
+                className={`nx-btn text-xs px-2.5 py-1 ${sidebarTab === "agents" ? "is-on" : ""}`}
+                aria-pressed={sidebarTab === "agents"}
+                data-testid="tab-sidebar-agents"
+              >
+                🤖 Agent Pod
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab("ask")}
+                className={`nx-btn text-xs px-2.5 py-1 ${sidebarTab === "ask" ? "is-on" : ""}`}
+                aria-pressed={sidebarTab === "ask"}
+                data-testid="tab-sidebar-ask"
+              >
+                💡 Ask Brain
+              </button>
+            </div>
+            {sidebarTab === "agents" ? (
+              <span className="nx-chip text-[11px]">
+                <span className={`nx-dot ${agentStream.isRunning ? "is-busy nx-blink" : ""}`} />
+                {agentStream.isRunning ? "triaging" : "standby"}
+              </span>
+            ) : (
+              <span className="nx-chip text-[11px]">
+                <span className="nx-dot" />
+                sources shown
+              </span>
+            )}
           </header>
-          <div className="flex-1 min-h-0">
-            <AskPanel />
+
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0">
+              {sidebarTab === "agents" ? (
+                <AgentPanel
+                  tenant={tenant}
+                  agentStream={agentStream}
+                  onHighlightEntities={setHighlightIds}
+                  onClearHighlights={() => setHighlightIds([])}
+                />
+              ) : (
+                <AskPanel />
+              )}
+            </div>
+
+            {/* Decision Ledger pinned at bottom in both views for cross-referencing */}
+            <section aria-label="Decision ledger" style={{ borderTop: "4px solid var(--nx-ink)", maxHeight: 168 }} className="flex flex-col min-h-0 shrink-0">
+              <header className="nx-panel-head">
+                <span className="nx-display">Decision ledger</span>
+                <span className="nx-chip">{decisions.length - dead} live</span>
+              </header>
+              <ul className="nx-scroll nx-mono px-3 py-2" style={{ listStyle: "none", margin: 0 }}>
+                {[...decisions]
+                  .sort((a, b) => String(b.properties?.decided_at).localeCompare(String(a.properties?.decided_at)))
+                  .map((d) => {
+                    const old = String(d.properties?.status) === "superseded";
+                    return (
+                      <li key={d.id}>
+                        <button
+                          type="button"
+                          onClick={() => setInspected(d)}
+                          className="flex w-full justify-between gap-3 text-left" title={String(d.properties?.summary ?? "")}
+                          style={{ background: "none", border: 0, color: old ? "var(--nx-dim)" : "var(--nx-cream)", cursor: "pointer", padding: "2px 0", font: "inherit", whiteSpace: "nowrap", textDecoration: old ? "line-through" : "none" }}
+                        >
+                          <span>{d.id}</span>
+                          <span style={{ textDecoration: "none", color: old ? "var(--nx-coral)" : "var(--nx-mint)" }}>
+                            {old ? `replaced by ${String(d.properties?.superseded_by ?? "?")}` : "live"}
+                          </span>
+                          <span style={{ color: "var(--nx-dim)", textDecoration: "none" }}>{String(d.properties?.decided_at ?? "").slice(5, 10)}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+              </ul>
+            </section>
           </div>
-          <section aria-label="Decision ledger" style={{ borderTop: "4px solid var(--nx-ink)", maxHeight: 168 }} className="flex flex-col min-h-0">
-            <header className="nx-panel-head">
-              <span className="nx-display">Decision ledger</span>
-              <span className="nx-chip">{decisions.length - dead} live</span>
-            </header>
-            <ul className="nx-scroll nx-mono px-3 py-2" style={{ listStyle: "none", margin: 0 }}>
-              {[...decisions]
-                .sort((a, b) => String(b.properties?.decided_at).localeCompare(String(a.properties?.decided_at)))
-                .map((d) => {
-                  const old = String(d.properties?.status) === "superseded";
-                  return (
-                    <li key={d.id}>
-                      <button
-                        type="button"
-                        onClick={() => setInspected(d)}
-                        className="flex w-full justify-between gap-3 text-left" title={String(d.properties?.summary ?? "")}
-                        style={{ background: "none", border: 0, color: old ? "var(--nx-dim)" : "var(--nx-cream)", cursor: "pointer", padding: "2px 0", font: "inherit", whiteSpace: "nowrap", textDecoration: old ? "line-through" : "none" }}
-                      >
-                        <span>{d.id}</span>
-                        <span style={{ textDecoration: "none", color: old ? "var(--nx-coral)" : "var(--nx-mint)" }}>
-                          {old ? `replaced by ${String(d.properties?.superseded_by ?? "?")}` : "live"}
-                        </span>
-                        <span style={{ color: "var(--nx-dim)", textDecoration: "none" }}>{String(d.properties?.decided_at ?? "").slice(5, 10)}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-            </ul>
-          </section>
         </aside>
       </div>
+
 
       <IngestionStreams live={live} refreshKey={syncTick + (event?.seq ?? 0)} />
 

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TopologyNode } from "@/lib/nexus/api";
-import { buildRooms, RECORDS_ID, str, type Room } from "@/lib/nexus/office";
-import { FLOORS, RECORDS_FLOOR } from "@/lib/nexus/theme";
+import type { TopologyNode, AgentStepTrace } from "@/lib/nexus/api";
+import { buildRooms, RECORDS_ID, AGENT_POD_ID, str, type Room } from "@/lib/nexus/office";
+import { FLOORS, RECORDS_FLOOR, AGENT_FLOOR } from "@/lib/nexus/theme";
 import { describeEvent, KIND_COLOR, type IngestEvent } from "@/lib/nexus/events";
+import type { TaskHandoffEvent } from "@/lib/nexus/useAgentStream";
 
 interface OfficeFloorProps {
   data: Parameters<typeof buildRooms>[0];
@@ -12,7 +13,11 @@ interface OfficeFloorProps {
   onNodeClick: (node: TopologyNode) => void;
   /** Latest ingested event; each new one plays a short scene on the floor. */
   event?: IngestEvent | null;
+  latestStep?: AgentStepTrace | null;
+  latestHandoff?: TaskHandoffEvent | null;
+  activeAgent?: string | null;
 }
+
 
 const ROOM_W = 648;
 const GAP = 20;
@@ -115,6 +120,46 @@ function Sprite({ seed, shirt }: { seed: string; shirt: string }) {
     </g>
   );
 }
+
+/** Pixel robot for autonomous agents, 10 x 10 cells. */
+function RobotSprite({ seed, accent }: { seed: string; accent: string }) {
+  const isScout = seed.includes("scout");
+  const isPlanner = seed.includes("planner");
+  const eye = isScout ? C.sky : isPlanner ? C.lemon : C.mint;
+  const chassis = isScout ? "#0284c7" : isPlanner ? "#d97706" : "#059669";
+  const metal = "#475569";
+  const metalLight = "#94a3b8";
+  const rows = [
+    "..||||||..",
+    "..######..",
+    ".########.",
+    ".#EEEEEE#.",
+    ".#E#EE#E#.",
+    "..######..",
+    "..TTTTTT..",
+    ".TTTTTTTT.",
+    "MTTTTTTTTM",
+    "MTTTTTTTTM",
+  ];
+  const fill: Record<string, string> = {
+    "|": accent,
+    "#": metal,
+    E: eye,
+    T: chassis,
+    M: metalLight,
+  };
+  const px = 3;
+  return (
+    <g shapeRendering="crispEdges">
+      {rows.flatMap((row, y) =>
+        row.split("").map((ch, x) =>
+          ch === "." ? null : <rect key={`${x}-${y}`} x={x * px} y={y * px} width={px} height={px} fill={fill[ch]} />
+        )
+      )}
+    </g>
+  );
+}
+
 
 function Bubble({ cx, bottom, lines, fill }: { cx: number; bottom: number; lines: string[]; fill: string }) {
   const w = Math.max(...lines.map((l) => l.length)) * 8.2 + 22;
@@ -239,8 +284,17 @@ function Confetti({ colors }: { colors: string[] }) {
   );
 }
 
-export function OfficeFloor({ data, highlightIds, onNodeClick, event = null }: OfficeFloorProps) {
+export function OfficeFloor({
+  data,
+  highlightIds,
+  onNodeClick,
+  event = null,
+  latestStep = null,
+  latestHandoff = null,
+  activeAgent = null,
+}: OfficeFloorProps) {
   const { rooms, supersededBy, incidents, personNote } = useMemo(() => buildRooms(data), [data]);
+
   const hl = useMemo(() => new Set(highlightIds), [highlightIds]);
   const [hover, setHover] = useState<string | null>(null);
   const dim = (id: string) => (hl.size > 0 && !hl.has(id) ? 0.38 : 1);
@@ -340,6 +394,116 @@ export function OfficeFloor({ data, highlightIds, onNodeClick, event = null }: O
     return () => timers.forEach(clearTimeout);
   }, [event]);
 
+  // an agent executes an MCP tool: speech bubble appears and envelope flies to touched graph nodes
+  useEffect(() => {
+    if (!latestStep || reduced.current) return undefined;
+    const a = anchors.current;
+    const agentId = `agent-${latestStep.agent.toLowerCase()}`;
+    const agentPos = a.get(agentId);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    if (agentPos) {
+      setActive((cur) => ({
+        ...cur,
+        [agentId]: {
+          seq: latestStep.step_n,
+          label: `calling ${latestStep.tool}`,
+          alert: false,
+        },
+      }));
+      timers.push(
+        setTimeout(() => {
+          setActive((cur) => {
+            if (cur[agentId]?.seq !== latestStep.step_n) return cur;
+            const { [agentId]: _gone, ...rest } = cur;
+            return rest;
+          });
+        }, 2800)
+      );
+    }
+
+    if (agentPos && latestStep.touched_entity_ids && latestStep.touched_entity_ids.length > 0) {
+      const targetId = latestStep.touched_entity_ids.find((id) => a.has(id));
+      if (targetId) {
+        const to = a.get(targetId)!;
+        timers.push(
+          setTimeout(() => {
+            setEnvelopes((cur) => [
+              ...cur.slice(-5),
+              {
+                key: Date.now() + Math.random(),
+                from: { x: agentPos.x, y: agentPos.y - 20 },
+                to: { x: to.x, y: to.y - 8 },
+                color: C.sky,
+              },
+            ]);
+          }, 200)
+        );
+      }
+    }
+
+    return () => timers.forEach(clearTimeout);
+  }, [latestStep]);
+
+  // task handoff between agents: flying envelope from sender to receiver
+  useEffect(() => {
+    if (!latestHandoff || reduced.current) return undefined;
+    const a = anchors.current;
+    const fromId = `agent-${latestHandoff.from_agent.toLowerCase()}`;
+    const toId = `agent-${latestHandoff.to_agent.toLowerCase()}`;
+    const fromPos = a.get(fromId);
+    const toPos = a.get(toId);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    if (fromPos && toPos) {
+      setActive((cur) => ({
+        ...cur,
+        [fromId]: {
+          seq: latestHandoff.step_n,
+          label: `handoff to ${latestHandoff.to_agent}`,
+          alert: false,
+        },
+      }));
+
+      setEnvelopes((cur) => [
+        ...cur.slice(-5),
+        {
+          key: Date.now() + Math.random(),
+          from: { x: fromPos.x, y: fromPos.y - 20 },
+          to: { x: toPos.x, y: toPos.y - 20 },
+          color: C.lemon,
+        },
+      ]);
+
+      timers.push(
+        setTimeout(() => {
+          setActive((cur) => ({
+            ...cur,
+            [toId]: {
+              seq: latestHandoff.step_n + 1000,
+              label: `claimed task!`,
+              alert: false,
+            },
+          }));
+        }, 1100)
+      );
+
+      timers.push(
+        setTimeout(() => {
+          setActive((cur) => {
+            const copy = { ...cur };
+            delete copy[fromId];
+            delete copy[toId];
+            return copy;
+          });
+        }, 3400)
+      );
+    }
+
+    return () => timers.forEach(clearTimeout);
+  }, [latestHandoff]);
+
+
   // boards that were just replaced get stamped, and new boards pop onto the wall
   const prevBoards = useRef<Map<string, boolean> | null>(null);
   useEffect(() => {
@@ -396,7 +560,7 @@ export function OfficeFloor({ data, highlightIds, onNodeClick, event = null }: O
         style={{ display: "block", margin: "0 auto" }}
       >
         <defs>
-          {[...FLOORS, RECORDS_FLOOR].map((f, i) => (
+          {[...FLOORS, RECORDS_FLOOR, AGENT_FLOOR].map((f, i) => (
             <pattern key={i} id={`nx-floor-${i}`} width="48" height="48" patternUnits="userSpaceOnUse">
               <rect width="48" height="48" fill={f.base} />
               <path d="M48 0H0V48" fill="none" stroke={f.line} strokeWidth="2" />
@@ -412,26 +576,30 @@ export function OfficeFloor({ data, highlightIds, onNodeClick, event = null }: O
           const y = rowY[row];
           const h = rowHeights[row];
           const isRecords = room.id === RECORDS_ID;
-          const floor = isRecords ? RECORDS_FLOOR : FLOORS[i % FLOORS.length];
-          const floorIdx = isRecords ? FLOORS.length : i % FLOORS.length;
+          const isAgentPod = room.id === AGENT_POD_ID;
+          const floor = isAgentPod ? AGENT_FLOOR : isRecords ? RECORDS_FLOOR : FLOORS[i % FLOORS.length];
+          const floorIdx = isAgentPod ? FLOORS.length + 1 : isRecords ? FLOORS.length : i % FLOORS.length;
 
           return (
             <g key={room.id} transform={`translate(${x}, ${y})`}>
               <rect x="-4" y="-4" width={ROOM_W + 8} height={h + 8} fill={C.ink} />
               <rect width={ROOM_W} height={h} fill={`url(#nx-floor-${floorIdx})`} />
-              <rect width={ROOM_W} height={WALL_H} fill={C.wall} />
+              <rect width={ROOM_W} height={WALL_H} fill={isAgentPod ? "#132337" : C.wall} />
               <rect y={WALL_H - 4} width={ROOM_W} height="4" fill={C.ink} />
-              <rect y={WALL_H} width={ROOM_W} height={h - WALL_H} fill="#0a2a3a" opacity="0.1" />
+              <rect y={WALL_H} width={ROOM_W} height={h - WALL_H} fill={isAgentPod ? "#0284c7" : "#0a2a3a"} opacity={isAgentPod ? "0.15" : "0.1"} />
 
               <rect x="0" y="0" width="8" height={WALL_H - 4} fill={floor.accent} />
-              <text x="24" y="27" className="nx-t-display" fontSize="11" fill={C.cream}>
-                {clip(room.name.toUpperCase(), 30)}
+              <text x="24" y="27" className="nx-t-display" fontSize="11" fill={isAgentPod ? "#38bdf8" : C.cream}>
+                {clip(room.name.toUpperCase(), 36)}
               </text>
-              <text x={ROOM_W - 16} y="27" textAnchor="end" className="nx-t-ui" fontSize="14" fill="#c4d2cf">
-                {room.name.length > 26
+              <text x={ROOM_W - 16} y="27" textAnchor="end" className="nx-t-ui" fontSize="14" fill={isAgentPod ? "#7dd3fc" : "#c4d2cf"}>
+                {isAgentPod
+                  ? "3 Autonomous Agents · FalkorDB Graph MCP"
+                  : room.name.length > 26
                   ? `${room.people.length} people · ${room.services.length} services`
                   : `${room.people.length} people · ${room.services.length} services · ${room.decisions.length} decisions`}
               </text>
+
 
               {/* decision boards on the back wall */}
               {room.decisions.map((d, k) => {
@@ -587,31 +755,59 @@ export function OfficeFloor({ data, highlightIds, onNodeClick, event = null }: O
                       <g className="nx-enter" style={{ ["--fx" as string]: `${doorX}px`, ["--fy" as string]: `${doorY}px`, ["--dur" as string]: `${walk}s`, ["--delay" as string]: `${delay}s` }}>
                         <g className="nx-stride" style={{ ["--bobs" as string]: Math.round(walk / 0.34), ["--delay" as string]: `${delay}s` }}>
                           <g key={act ? `hop-${act.seq}` : "rest"} className={act ? "nx-hop" : undefined}>
-                            <Sprite seed={p.id} shirt={floor.accent} />
+                            {p.properties?.is_agent ? (
+                              <RobotSprite seed={p.id} accent={floor.accent} />
+                            ) : (
+                              <Sprite seed={p.id} shirt={floor.accent} />
+                            )}
                           </g>
                         </g>
                       </g>
                     </g>
                     <g shapeRendering="crispEdges">
                       <rect x="2" y="38" width="104" height="38" fill={C.ink} />
-                      <rect className="nx-pick" x="4" y="40" width="100" height="34" fill={C.desk} />
-                      <rect x="4" y="40" width="100" height="6" fill={C.deskTop} />
+                      <rect className="nx-pick" x="4" y="40" width="100" height="34" fill={p.properties?.is_agent ? "#1e293b" : C.desk} />
+                      <rect x="4" y="40" width="100" height="6" fill={p.properties?.is_agent ? "#334155" : C.deskTop} />
                       <rect x="40" y="42" width="28" height="20" fill={C.ink} />
-                      <rect x="42" y="44" width="24" height="14" fill={C.screen} />
+                      <rect x="42" y="44" width="24" height="14" fill={p.properties?.is_agent ? "#032830" : C.screen} />
                       <svg x="42" y="44" width="24" height="14" overflow="hidden">
                         <g className="nx-scr" style={{ animationDelay: `-${(hash(p.id) % 24) / 10}s` }}>
                           {[2, 6, 10, 16, 20, 24].map((yy, n) => (
-                            <rect key={yy} x="3" y={yy} width={8 + ((hash(p.id) + n * 5) % 4) * 3} height="2" fill={n % 2 ? C.sky : C.mint} />
+                            <rect
+                              key={yy}
+                              x="3"
+                              y={yy}
+                              width={8 + ((hash(p.id) + n * 5) % 4) * 3}
+                              height="2"
+                              fill={p.properties?.is_agent ? (n % 2 ? "#38bdf8" : "#4ade80") : (n % 2 ? C.sky : C.mint)}
+                            />
                           ))}
                         </g>
-                        <rect className="nx-cursor" x="3" y="10" width="3" height="2" fill="#fff" />
+                        <rect className="nx-cursor" x="3" y="10" width="3" height="2" fill={p.properties?.is_agent ? "#38bdf8" : "#fff"} />
                       </svg>
-                      <rect x="42" y="66" width="24" height="5" fill="#d8cfae" />
+                      <rect x="42" y="66" width="24" height="5" fill={p.properties?.is_agent ? "#0284c7" : "#d8cfae"} />
                     </g>
-                    <rect x="4" y="82" width="100" height="22" fill={C.cream} stroke={C.ink} strokeWidth="2" />
-                    <text x="54" y="98" textAnchor="middle" className="nx-t-ui" fontSize="14" fontWeight="700" fill={C.ink}>
+                    <rect
+                      x="4"
+                      y="82"
+                      width="100"
+                      height="22"
+                      fill={p.properties?.is_agent ? "#0b1928" : C.cream}
+                      stroke={p.properties?.is_agent ? "#38bdf8" : C.ink}
+                      strokeWidth="2"
+                    />
+                    <text
+                      x="54"
+                      y="98"
+                      textAnchor="middle"
+                      className="nx-t-ui"
+                      fontSize="14"
+                      fontWeight="700"
+                      fill={p.properties?.is_agent ? "#38bdf8" : C.ink}
+                    >
                       {clip(fullName, 13)}
                     </text>
+
                     {bubble && (
                       <g key={act ? `b-${act.seq}` : "b"} className={act ? "nx-bubble-life" : undefined}>
                         <Bubble cx={54} bottom={2} lines={bubble.lines} fill={bubble.fill} />

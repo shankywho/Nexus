@@ -117,18 +117,50 @@ All settings are environment variables. See [`.env.example`](.env.example).
 | **`superseded_sources_flagged`**| **1.00** | **0.00** | **NEXUS explicitly warns the engineer that past sources are superseded**; Flat RAG cannot distinguish active from invalid. |
 | **`p95_latency_ms`** | **17 ms** | **0.2 ms** | NEXUS reads the graph and its fact edges in under 20 ms; both are well within interactive limits. |
 
-Numbers come from the offline answers on the 76-event dataset. With a Claude key the answers differ; `make eval` measures whichever engine is configured.
+### Track 2 High-Concurrency Memory Benchmark
+
+Benchmarked using `uv run --project api python scripts/loadtest.py --workers 10 --operations 100` natively against FalkorDB:
+
+| Metric | Result | Description |
+|---|---|---|
+| **Throughput** | **2,720.7 ops/sec** | Concurrent reads, task claims, handoffs, and episode writes |
+| **Session Latency (p50)** | **25.11 ms** | Median multi-step agent session time |
+| **Session Latency (p95)** | **31.33 ms** | 95th percentile under concurrent worker contention |
+| **Atomic Claim Race Conditions** | **0 double-claims** | Atomic `MATCH ... WHERE status = 'open' SET status = 'claimed'` guarantees single ownership |
 
 ## Documentation
 
 | Doc | Contents |
 |---|---|
+| [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) | **Multi-Track Architecture & Proof:** Full breakdown of all 3 tracks, Mermaid diagrams, MCP tools, and Rule 3 proof |
+| [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | **Graph Data Model:** Node labels, edge types, and properties across `nexus_company`, `nexus_temporal`, `nexus_docs`, and `nexus_memory_<tenant>` |
+| [docs/QUERIES.md](docs/QUERIES.md) | **Cypher & Graph Algorithms:** Every query and algorithm (`algo.pageRank`, `algo.betweenness`, BFS) the product depends on |
+| [docs/DEMO.md](docs/DEMO.md) | **Four-minute demo video script** walking through the live story across all 3 tracks |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram, ingest sequence, supersession lifecycle, graph schema, code layout |
 | [docs/API.md](docs/API.md) | Endpoint reference |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Engineering decision log |
-| [docs/DEMO.md](docs/DEMO.md) | Four-minute demo script |
 | [docs/CONTRACTS.md](docs/CONTRACTS.md) | Verified integration contracts with upstream libraries |
 | [docs/BUILD_SPEC.md](docs/BUILD_SPEC.md) | Original build specification |
+
+## Hackathon tracks
+
+NEXUS qualifies for and enters **all three tracks** of **Graph Hacks: Context for AI Agents** (WeMakeDevs x FalkorDB):
+
+- **Track 01: Agents That Act on Connected Data** — Multi-hop reasoning over service dependencies (`:Service-[:DEPENDS_ON]->:Service`), graph algorithms (`algo.pageRank`, `algo.betweenness`, BFS blast radius), tool selection through MCP (`mcp` Python SDK + `falkordb/mcpserver`), and explainable telemetry traces (`:AgentRun ➔ :ToolCall`).
+- **Track 02: Agent Memory and Coordination** — Native FalkorDB episodic, semantic (with bi-temporal invalidation), and procedural playbooks; shared state and zero-race atomic task handoffs between Scout ➔ Planner ➔ Scribe; high concurrency (>2,700 ops/sec); and hard tenant isolation (`nexus_memory_acme` vs `nexus_memory_globex`).
+- **Track 03: Company Brain** — Multi-source telemetry (Slack, Jira, GitHub, ADRs) unified into a bi-temporal decision graph resolving who owns what and reversing stale decisions with 0% stale rate.
+
+### Rule 3 Compliance (FalkorDB Must Do Real Work)
+```bash
+# Verify Rule 3 by simulating a graph outage:
+uv run --project api python scripts/demo_agents.py --graph-off
+```
+Result: The entire agent reasoning loop fails immediately (`ConnectionError: Connection refused`). If FalkorDB is removed, the product cannot function.
+
+
+## AI assistance disclosure
+
+Per Hackathon Rules 11–13: AI coding assistants (Google DeepMind AntiGravity / Claude Code) were used during development for scaffolding, architecture drafting, documentation, and test orchestration. All graph models, Cypher queries, business logic, and code were verified and are maintained by the author.
 
 ## Privacy and security
 

@@ -1,0 +1,13 @@
+{
+  "decisions": [
+    {
+      "id": "GLX-DEC-001",
+      "title": "Autonomous Containment Protocol",
+      "status": "active",
+      "summary": "Mandate autonomous automated SCADA shutdown if core temperature rises > 450C.",
+      "decided_at": "2026-08-15T12:00:00Z",
+      "owner_id": "hank",
+      "service_id": "power-grid"
+    }
+  ]
+}

@@ -6,3 +6,5 @@ export const FLOORS = [
   { base: "#b9a1c9", line: "#a28ab3", accent: "#ffa07a" },
 ];
 export const RECORDS_FLOOR = { base: "#c9c3ad", line: "#b3ad97", accent: "#ffd166" };
+export const AGENT_FLOOR = { base: "#172535", line: "#0f1b27", accent: "#38bdf8" };
+
