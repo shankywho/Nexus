@@ -33,4 +33,15 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 - **Tenant Display Consistency:** Ensured tenant display strictly uses brand name ("Acme Payments") on screen, with internal identifier `acme` restricted solely to tooltips and API parameters.
 - **Deliverables:** Verified zero red on cold start while API is up, verified clean build with 0 ESLint warnings, and saved screenshots to `docs/img/ui/phase-3-1440x900.png` and `docs/img/ui/phase-3-1920x1080.png`.
 
+### Phase 4: Office Floor Grid, Room Tiles, Sprite Cell Grid, ShortNames & Name Tags
+- **2x2 Team Grid + Bottom-Spanning Agent Pod:** Replaced rigid fixed-width 648px SVG coordinates with a fully responsive DOM CSS grid (`grid-template-columns: repeat(2, minmax(0, 1fr))`, `grid-template-rows: 1fr 1fr 0.8fr`). The 4 engineering team rooms occupy the 2×2 grid while the Agent Pod spans both columns (`grid-column: 1 / -1`) at the bottom. This completely eliminates dead horizontal space and fixed-width centering artifacts at 1920×1080.
+- **Fixed Two-Row Sprite Alignment:** Structured each room interior into two clean horizontal tiers:
+  - Row 1 (Back Wall): Server racks on the left + team decision whiteboard on the right.
+  - Row 2 (Desks): Seated engineer avatars with a 6px desk overlap.
+  This guarantees that racks and desks align across neighboring rooms without vertical misalignment.
+- **Service ShortName Mapping:** Implemented `shortName` mapping (`LEDGER`, `PAYOUTS`, `FRAUD`, `SESSIONS`, `AUTH`, `NOTIFY`, `CHECKOUT`, `TELEMETRY`, `MCP`, `MEMORY`) rendered in `--font-pixel` 11px uppercase. Completely eliminated all text truncation and ellipses on the floor.
+- **First-Name Only Tags:** Formatted name tags below desks to display only first names ("Kabir", "Ananya", "Arjun", "Sarah", etc.) in crisp 11px mono with a 1px border. Full names and role descriptions are preserved in the tooltip and side inspector.
+- **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified alignment and zero truncated labels at both 1440×900 and 1920×1080, and saved screenshots to `docs/img/ui/phase-4-1440x900.png` and `docs/img/ui/phase-4-1920x1080.png`.
+
+
 
