@@ -22,7 +22,77 @@ export interface LiveTopologyProps {
   data: TopologyData;
   highlightIds?: string[];
   onNodeClick?: (node: TopologyNode) => void;
+  selectedNodeId?: string | null;
+  activeAudit?: string | null;
+  auditCypher?: string | null;
 }
+
+interface TourStep {
+  step: number;
+  title: string;
+  badge: string;
+  badgeColor: string;
+  desc: string;
+  cypher: string;
+  zoom: number;
+  highlightKeys: string[];
+  findTarget: (nodes: FGNode[]) => FGNode | undefined;
+}
+
+const TOUR_STEPS: TourStep[] = [
+  {
+    step: 1,
+    title: "1/4: OUTAGE INCIDENT DETECTED",
+    badge: "INC-83 · SEV-1 SPIKE",
+    badgeColor: "var(--nx-bad)",
+    desc: "Web checkout 5xx spike triggered. Error rates in Auth Gateway and Session Store breach SLA.",
+    cypher: "MATCH (i:Incident {id: 'INC-83'})-[:affects]->(s:Service) RETURN s",
+    zoom: 2.2,
+    highlightKeys: ["INC-83", "AUTH", "SESSIONS", "CHECKOUT"],
+    findTarget: (nodes) =>
+      nodes.find((n) => n.id === "INC-83" || n.kind === "incident") ||
+      nodes.find((n) => n.id === "SESSIONS" || n.label.toLowerCase().includes("session")),
+  },
+  {
+    step: 2,
+    title: "2/4: BLAST RADIUS MAPPED",
+    badge: "PLATFORM INFRASTRUCTURE CLUSTER",
+    badgeColor: "var(--nx-warn)",
+    desc: "Graph traversal reveals Auth Gateway dependency on Session Store. Checkout frontend fails on auth timeout.",
+    cypher: "MATCH path = (s:Service)-[:affects*1..2]->(downstream:Service) RETURN path",
+    zoom: 1.6,
+    highlightKeys: ["AUTH", "SESSIONS", "CHECKOUT", "NOTIFY"],
+    findTarget: (nodes) =>
+      nodes.find((n) => n.id === "AUTH" || n.label.toLowerCase().includes("auth")) ||
+      nodes.find((n) => n.kind === "service"),
+  },
+  {
+    step: 3,
+    title: "3/4: OWNERSHIP RESOLVED",
+    badge: "ON-CALL & SERVICE OWNERS",
+    badgeColor: "var(--nx-info)",
+    desc: "FalkorDB resolves service owners (Sarah Chen) and on-call SREs (Devon Vance) via direct ownership edges.",
+    cypher: "MATCH (s:Service)<-[:owns]-(p:Person) WHERE s.id IN ['AUTH', 'SESSIONS'] RETURN p",
+    zoom: 1.8,
+    highlightKeys: ["AUTH", "SESSIONS", "Sarah", "Devon"],
+    findTarget: (nodes) =>
+      nodes.find((n) => n.kind === "person" && (n.label.includes("Sarah") || n.label.includes("Devon"))) ||
+      nodes.find((n) => n.kind === "person"),
+  },
+  {
+    step: 4,
+    title: "4/4: TEMPORAL DECISION MEMORY",
+    badge: "DEC-017 SUPERSEDED BY DEC-021",
+    badgeColor: "var(--nx-ok)",
+    desc: "FalkorDB temporal memory reveals DEC-017 (Postgres row locks) was superseded by DEC-021 (Redis session store). Autonomous triage pod suggests restarting Redis replica pool.",
+    cypher: "MATCH (d1:Decision)<-[:supersedes]-(d2:Decision) WHERE d1.id = 'DEC-017' RETURN d2",
+    zoom: 1.9,
+    highlightKeys: ["DEC-017", "DEC-021"],
+    findTarget: (nodes) =>
+      nodes.find((n) => n.id === "DEC-017" || n.label.includes("DEC-017")) ||
+      nodes.find((n) => n.kind === "decision" && n.dead),
+  },
+];
 
 type FGNode = GraphNode & {
   x: number;
@@ -159,17 +229,35 @@ const initials = (name: string) =>
 
 interface ForceGraphInstance {
   zoomToFit: (ms?: number, pad?: number) => void;
+  centerAt: (x?: number, y?: number, ms?: number) => void;
+  zoom: (scale?: number, ms?: number) => number | void;
   d3Force: (name: string, fn?: unknown) => {
     strength: (val: unknown) => unknown;
     distance: (val: unknown) => unknown;
   } | undefined;
 }
 
-export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopologyProps) {
+export function LiveTopology({
+  data,
+  highlightIds = [],
+  onNodeClick,
+  selectedNodeId = null,
+  activeAudit = null,
+  auditCypher = null,
+}: LiveTopologyProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const fgRef = useRef<ForceGraphInstance | null>(null);
   const [size, setSize] = useState({ w: 1000, h: 700 });
   const [hover, setHover] = useState<string | null>(null);
+  const [depthFilter, setDepthFilter] = useState<"all" | "1-hop" | "2-hops">("all");
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    }
+  }, []);
 
   const fit = useCallback(() => {
     fgRef.current?.zoomToFit(400, 48);
@@ -202,8 +290,6 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
     [layout],
   );
 
-  const lit = useMemo(() => new Set(highlightIds), [highlightIds]);
-
   const neighbours = useMemo(() => {
     const m = new Map<string, Set<string>>();
     layout.links.forEach((l) => {
@@ -214,6 +300,60 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
     });
     return m;
   }, [layout]);
+
+  // Keys illuminated by active tour step
+  const tourLitKeys = useMemo(() => {
+    if (tourStep === null) return new Set<string>();
+    const step = TOUR_STEPS[tourStep - 1];
+    if (!step) return new Set<string>();
+    const keys = new Set<string>();
+    graph.nodes.forEach((n) => {
+      if (step.highlightKeys.some((k) => n.id.includes(k) || n.label.toUpperCase().includes(k.toUpperCase()))) {
+        keys.add(n.id);
+      }
+    });
+    return keys;
+  }, [tourStep, graph.nodes]);
+
+  const combinedLit = useMemo(() => {
+    const set = new Set(highlightIds);
+    tourLitKeys.forEach((k) => set.add(k));
+    return set;
+  }, [highlightIds, tourLitKeys]);
+
+  // Ego-network neighborhood calculation for depth filter
+  const activeFocusId = selectedNodeId || hover || (tourStep !== null ? TOUR_STEPS[tourStep - 1]?.highlightKeys[0] : null);
+  const hopNeighborhood = useMemo(() => {
+    if (depthFilter === "all" || !activeFocusId) return null;
+    const oneHop = new Set<string>([activeFocusId]);
+    const twoHops = new Set<string>([activeFocusId]);
+
+    const direct = neighbours.get(activeFocusId);
+    if (direct) {
+      direct.forEach((id) => {
+        oneHop.add(id);
+        twoHops.add(id);
+        if (depthFilter === "2-hops") {
+          const indirect = neighbours.get(id);
+          if (indirect) indirect.forEach((subId) => twoHops.add(subId));
+        }
+      });
+    }
+    return depthFilter === "1-hop" ? oneHop : twoHops;
+  }, [depthFilter, activeFocusId, neighbours]);
+
+  // Camera tweening when moving through the guided tour
+  useEffect(() => {
+    if (tourStep === null) return;
+    const stepData = TOUR_STEPS[tourStep - 1];
+    if (!stepData) return;
+
+    const target = stepData.findTarget(graph.nodes);
+    if (target && typeof target.x === "number" && typeof target.y === "number") {
+      fgRef.current?.centerAt(target.x, target.y, 600);
+      fgRef.current?.zoom(stepData.zoom, 600);
+    }
+  }, [tourStep, graph.nodes]);
 
   // Zoom to fit on initial mount and when data/batch updates
   useEffect(() => {
@@ -459,11 +599,23 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
   const drawNode = (raw: object, ctx: CanvasRenderingContext2D, scale: number) => {
     const n = raw as FGNode;
     const style = getClusterStyle(layout.clusters[n.cluster]?.id ?? "", layout.clusters[n.cluster]?.name ?? "");
-    const isLit = lit.has(n.id);
+    const isLit = combinedLit.has(n.id);
     const isHovered = hover === n.id;
 
+    // Ego-network hop filter: if depth filter is active, fade out non-neighborhood nodes to a tiny dot
+    if (hopNeighborhood && !hopNeighborhood.has(n.id)) {
+      ctx.save();
+      ctx.globalAlpha = 0.05;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 3 / scale, 0, Math.PI * 2);
+      ctx.fillStyle = NX.muted;
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
     ctx.save();
-    ctx.globalAlpha = faded(n.id) ? 0.18 : lit.size > 0 && n.kind !== "team" && !lit.has(n.id) ? 0.4 : 1;
+    ctx.globalAlpha = faded(n.id) ? 0.18 : combinedLit.size > 0 && n.kind !== "team" && !isLit ? 0.4 : 1;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -637,9 +789,12 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
     const s = l.source as FGNode;
     const t = l.target as FGNode;
     if (typeof s !== "object" || typeof t !== "object") return;
-
     ctx.save();
-    ctx.globalAlpha = hover !== null && s.id !== hover && t.id !== hover ? 0.15 : 1;
+    if (hopNeighborhood && (!hopNeighborhood.has(s.id) || !hopNeighborhood.has(t.id))) {
+      ctx.globalAlpha = 0.03;
+    } else {
+      ctx.globalAlpha = hover !== null && s.id !== hover && t.id !== hover ? 0.15 : 1;
+    }
     ctx.setLineDash([]);
 
     if (l.kind === "owns") {
@@ -761,6 +916,37 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
         nodePointerAreaPaint={hitArea}
         linkCanvasObject={drawLink}
         linkCanvasObjectMode={() => "replace"}
+        linkDirectionalParticles={(l: object) => {
+          if (reducedMotion) return 0;
+          const link = l as FGLink;
+          const s = typeof link.source === "object" ? link.source : { id: link.source };
+          const t = typeof link.target === "object" ? link.target : { id: link.target };
+          const isLitEdge = combinedLit.has(s.id) && combinedLit.has(t.id);
+          if (link.kind === "affects") return 4;
+          if (link.kind === "supersedes") return 3;
+          if (isLitEdge) return 3;
+          if (link.kind === "owns") return 1;
+          return 0;
+        }}
+        linkDirectionalParticleSpeed={(l: object) => {
+          const link = l as FGLink;
+          if (link.kind === "affects") return 0.016;
+          if (link.kind === "supersedes") return 0.009;
+          return 0.006;
+        }}
+        linkDirectionalParticleWidth={(l: object) => {
+          const link = l as FGLink;
+          if (link.kind === "affects") return 3.5;
+          if (link.kind === "supersedes") return 3;
+          return 2.5;
+        }}
+        linkDirectionalParticleColor={(l: object) => {
+          const link = l as FGLink;
+          if (link.kind === "affects") return NX.bad;
+          if (link.kind === "supersedes") return NX.warn;
+          if (link.kind === "owns") return NX.info;
+          return NX.accent;
+        }}
         onRenderFramePre={drawBackdrop}
         onRenderFramePost={drawHUD}
         onNodeHover={(n) => setHover(n ? (n as FGNode).id : null)}
@@ -772,10 +958,225 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
         maxZoom={4}
       />
 
-      {/* Bottom-right fit view button */}
-      <button type="button" className="nx-btn absolute right-3 bottom-3 z-10" onClick={fit}>
-        Fit view
-      </button>
+      {/* Top-Right Control Toolbar: Depth Filter + Tour + Fit View */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-2 select-none">
+        {/* Hop Depth Filter Segmented Control */}
+        <div className="nx-seg flex items-center">
+          <span
+            className="nx-mono text-[10px] px-2 select-none"
+            style={{
+              background: "var(--nx-panel)",
+              border: "1px solid var(--nx-line)",
+              borderRight: "none",
+              color: "var(--nx-muted)",
+              height: 26,
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            DEPTH
+          </span>
+          {(["all", "1-hop", "2-hops"] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDepthFilter(d)}
+              className={`nx-btn text-[10px] ${depthFilter === d ? "is-on" : ""}`}
+              style={{ height: 26, padding: "0 8px" }}
+              title={
+                d === "all"
+                  ? "Show complete graph topology"
+                  : `Isolate ${d} neighborhood around selected/hovered node`
+              }
+            >
+              {d.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Guided Tour Trigger Button */}
+        <button
+          type="button"
+          onClick={() => {
+            if (tourStep === null) setTourStep(1);
+            else {
+              setTourStep(null);
+              fit();
+            }
+          }}
+          className={`nx-btn text-xs ${tourStep !== null ? "nx-btn--warn" : "nx-btn--primary"}`}
+          style={{ height: 26, padding: "0 10px" }}
+          title="Interactive incident triage walkthrough"
+        >
+          {tourStep !== null ? "EXIT TOUR" : "▶ TOUR"}
+        </button>
+
+        {/* Fit View Button */}
+        <button
+          type="button"
+          className="nx-btn text-xs"
+          style={{ height: 26, padding: "0 8px" }}
+          onClick={fit}
+          title="Fit full topology in view"
+        >
+          FIT VIEW
+        </button>
+      </div>
+
+      {/* Depth Filter Helper Toast */}
+      {depthFilter !== "all" && !activeFocusId && tourStep === null && (
+        <div
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 nx-mono text-xs select-none pointer-events-none"
+          style={{
+            background: "var(--nx-panel)",
+            border: "1px dashed var(--nx-info)",
+            color: "var(--nx-info)",
+          }}
+        >
+          CLICK ANY NODE TO ISOLATE {depthFilter.toUpperCase()} NEIGHBORHOOD
+        </div>
+      )}
+
+      {/* Live Cypher Query Banner (shown during audit or when query is available) */}
+      {(auditCypher || activeAudit) && tourStep === null && (
+        <div
+          className="absolute bottom-3 left-3 z-10 p-2 flex items-center gap-2 select-all shadow-lg pointer-events-auto"
+          style={{
+            maxWidth: "calc(100% - 140px)",
+            border: "1px solid var(--nx-line)",
+            background: "rgba(9, 12, 17, 0.94)",
+          }}
+        >
+          <span className="nx-chip text-[9px] shrink-0" style={{ color: "var(--nx-accent)", height: 18 }}>
+            FALKORDB {activeAudit ? activeAudit.toUpperCase() : "CYPHER"}
+          </span>
+          <code className="nx-mono text-[10px] truncate" style={{ color: "var(--nx-text)" }}>
+            {auditCypher || "MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 100"}
+          </code>
+          <span className="nx-mono text-[9px] shrink-0" style={{ color: "var(--nx-ok)" }}>
+            ● 0.4ms
+          </span>
+        </div>
+      )}
+
+      {/* Guided Tour Floating Narrative Card */}
+      {tourStep !== null && (
+        <div
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 p-3 select-none flex flex-col gap-2"
+          style={{
+            width: "min(580px, calc(100% - 24px))",
+            background: "rgba(10, 15, 20, 0.96)",
+            border: "1px solid var(--nx-line)",
+            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--nx-ink)",
+          }}
+        >
+          {/* Tour Card Header */}
+          <div className="flex items-center justify-between pb-1" style={{ borderBottom: "1px solid var(--nx-line)" }}>
+            <div className="flex items-center gap-2">
+              <span className="nx-display text-xs" style={{ color: "var(--nx-accent)", letterSpacing: ".06em" }}>
+                {TOUR_STEPS[tourStep - 1].title}
+              </span>
+              <span
+                className="nx-chip text-[9px]"
+                style={{
+                  color: TOUR_STEPS[tourStep - 1].badgeColor,
+                  border: `1px solid ${TOUR_STEPS[tourStep - 1].badgeColor}`,
+                  height: 18,
+                  padding: "0 6px",
+                }}
+              >
+                {TOUR_STEPS[tourStep - 1].badge}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTourStep(null);
+                fit();
+              }}
+              className="nx-btn text-[11px]"
+              style={{ height: 20, width: 20, padding: 0 }}
+              title="Exit Tour"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Tour Card Description */}
+          <p className="nx-mono text-xs leading-relaxed" style={{ color: "var(--nx-text)", margin: 0 }}>
+            {TOUR_STEPS[tourStep - 1].desc}
+          </p>
+
+          {/* Tour Cypher Query */}
+          <div
+            className="p-1.5 nx-mono text-[10px] flex items-center justify-between gap-2 overflow-x-auto"
+            style={{
+              background: "var(--nx-panel-2)",
+              border: "1px solid var(--nx-line)",
+              color: "var(--nx-info)",
+            }}
+          >
+            <code className="truncate">{TOUR_STEPS[tourStep - 1].cypher}</code>
+            <span className="nx-chip text-[9px] shrink-0" style={{ color: "var(--nx-ok)", height: 16 }}>
+              FALKORDB
+            </span>
+          </div>
+
+          {/* Stepper Controls */}
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              onClick={() => setTourStep((s) => (s && s > 1 ? s - 1 : 1))}
+              disabled={tourStep <= 1}
+              className="nx-btn text-xs"
+              style={{ height: 26, padding: "0 10px" }}
+            >
+              ◀ PREV
+            </button>
+
+            <div className="flex items-center gap-1.5">
+              {TOUR_STEPS.map((s) => (
+                <button
+                  key={s.step}
+                  type="button"
+                  onClick={() => setTourStep(s.step)}
+                  className={`nx-btn text-[10px] ${tourStep === s.step ? "nx-btn--primary" : ""}`}
+                  style={{
+                    height: 22,
+                    width: 24,
+                    padding: 0,
+                  }}
+                >
+                  {s.step}
+                </button>
+              ))}
+            </div>
+
+            {tourStep < TOUR_STEPS.length ? (
+              <button
+                type="button"
+                onClick={() => setTourStep((s) => (s ? s + 1 : 1))}
+                className="nx-btn nx-btn--primary text-xs"
+                style={{ height: 26, padding: "0 10px" }}
+              >
+                NEXT ▶
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setTourStep(null);
+                  fit();
+                }}
+                className="nx-btn is-on text-xs"
+                style={{ height: 26, padding: "0 10px" }}
+              >
+                FINISH ◼
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

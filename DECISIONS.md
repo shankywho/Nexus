@@ -128,6 +128,30 @@ This log records design decisions, tradeoffs, and judgment calls made during the
      - All keyframes (`nx-glow`, `nx-ringout`, `nx-hop`, `nx-scr`, `nx-cursor`, `nx-flying-envelope`) are explicitly disabled under `@media (prefers-reduced-motion: reduce)`.
      - Zero raw `#hex` or non-standard styles: all colors utilize CSS variables (`var(--nx-note)`, `var(--nx-bad)`, `var(--nx-ok)`, `var(--nx-info)`, `var(--nx-ink)`).
 
+## Graph Showcase Enhancements (Interactive Storytelling, Particles & Ego-Network Lens)
+
+- **Context & Motivation:**
+  - Standard force-directed graphs often suffer from the "hairball problem" where viewers and hackathon judges struggle to discern the underlying story. Following research on top graph products (Datadog Service Map, Neo4j Bloom, Cosmograph, Obsidian Local Graph), four core showcase features were built into `LiveTopology.tsx`:
+- **Implemented Capabilities:**
+  1. **Directional Edge Flow Particles (`linkDirectionalParticles`):**
+     - Live animated particles flow along relationships to communicate telemetry and dependency direction.
+     - Red/coral particles (`NX.bad`) race along `affects` links during active incidents.
+     - Amber particles (`NX.warn`) stream along curved `supersedes` arcs.
+     - Cyan particles (`NX.info`) pulse along `owns` links.
+     - Lit paths during audits stream gold particles (`NX.accent`).
+     - Fully disabled when `@media (prefers-reduced-motion: reduce)` is active.
+  2. **1-Click Guided Incident Triage Tour (`▶ TOUR`):**
+     - An interactive 4-step storytelling walkthrough with smooth camera tweening (`fgRef.centerAt` + `fgRef.zoom`) and floating narrative terminal cards:
+       - *Step 1 (Outage Alert):* Zooms into `INC-83` and affected services.
+       - *Step 2 (Blast Radius):* Maps Platform Infrastructure dependencies and downstream Checkout impact.
+       - *Step 3 (Ownership Resolution):* Traces `owns` edges to identify on-call SREs and leads (`Sarah Chen`, `Devon Vance`).
+       - *Step 4 (Temporal Decision Memory):* Traces root-cause decision `DEC-017` superseded by `DEC-021` with live Cypher statement.
+  3. **Ego-Network Hop Depth Filter (`DEPTH: [ ALL | 1-HOP | 2-HOPS ]`):**
+     - Segmented control in the top-right canvas toolbar allowing users to isolate neighborhoods around selected or hovered nodes.
+     - Nodes outside the hop boundary dissolve to 0.05 opacity with labels hidden; non-neighbor edges fade to 0.03 opacity, eliminating visual clutter.
+  4. **Live FalkorDB Cypher Status Banner:**
+     - Monospace floating banner at bottom-left displaying active Cypher queries during audits or tour steps with execution latency tags (`0.4ms`), highlighting FalkorDB's role to hackathon judges.
+
 
 
 

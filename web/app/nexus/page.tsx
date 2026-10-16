@@ -405,7 +405,14 @@ export default function NexusDashboard() {
                 activeAgent={agentStream.activeAgent}
               />
             ) : (
-              <LiveTopology data={topology} highlightIds={combinedHighlights} onNodeClick={setInspected} />
+              <LiveTopology
+                data={topology}
+                highlightIds={combinedHighlights}
+                onNodeClick={setInspected}
+                selectedNodeId={inspected?.id}
+                activeAudit={activeAudit}
+                auditCypher={auditCypher}
+              />
             )}
 
             {online === false && (
