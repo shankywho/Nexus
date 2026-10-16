@@ -551,6 +551,28 @@ export function OfficeFloor({
         position: "relative",
       }}
     >
+      {rooms.length === 0 && (
+        <div
+          className="flex flex-col items-center justify-center p-8 text-center"
+          style={{
+            gridColumn: "1 / -1",
+            gridRow: "1 / -1",
+            border: "1px dashed var(--nx-line)",
+            background: "var(--nx-panel)",
+            margin: "auto",
+            maxWidth: 420,
+          }}
+        >
+          <div className="nx-display text-xs mb-2 flex items-center gap-2" style={{ color: "var(--nx-accent)" }}>
+            <span className="nx-dot is-busy nx-blink" />
+            <span>SYNCING OFFICE FLOOR...</span>
+          </div>
+          <p className="nx-mono text-[11px]" style={{ color: "var(--nx-muted)", margin: 0 }}>
+            Fetching FalkorDB topology and reconstructing room desks.
+          </p>
+        </div>
+      )}
+
       {rooms.map((room) => {
         const theme = getRoomTheme(room.id);
         const isAgentPod = room.id === AGENT_POD_ID;

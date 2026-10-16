@@ -99,7 +99,8 @@ export function AgentPanel({
     onClearHighlights();
 
     try {
-      const res = await triggerAgentRun(incidentIdToRun, tenant);
+      const incObj = incidents.find((i) => i.id === incidentIdToRun);
+      const res = await triggerAgentRun(incidentIdToRun, tenant, incObj);
       setLastRunResponse(res);
       // Highlight all touched nodes across the investigation
       const allTouched = new Set<string>();
@@ -142,7 +143,7 @@ export function AgentPanel({
             value={selectedIncidentId}
             onChange={(e) => setSelectedIncidentId(e.target.value)}
             disabled={loadingRun || agentStream.isRunning}
-            className="nx-input nx-mono flex-1 text-xs"
+            className="nx-input nx-mono flex-1 min-w-0 text-xs"
             style={{ height: 36, padding: "0 8px" }}
             data-testid="incident-select"
           >
@@ -157,7 +158,7 @@ export function AgentPanel({
             type="button"
             onClick={() => handleRunAgent()}
             disabled={loadingRun || agentStream.isRunning}
-            className="nx-btn nx-btn--warn text-xs whitespace-nowrap"
+            className="nx-btn nx-btn--warn shrink-0 text-xs whitespace-nowrap flex items-center gap-1.5"
             style={{ height: 36, padding: "0 12px" }}
             data-testid="page-agents-btn"
           >

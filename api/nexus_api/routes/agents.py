@@ -16,9 +16,10 @@ router = APIRouter(prefix="/api/agents", tags=["agents"])
 
 class AgentRunRequest(BaseModel):
     incident_id: str = Field(..., json_schema_extra={"example": "INC-83"})
-    title: str = Field(..., json_schema_extra={"example": "web-checkout 5xx spike"})
-    service_id: str = Field(..., json_schema_extra={"example": "web-checkout"})
+    title: str | None = Field(default=None, json_schema_extra={"example": "web-checkout 5xx spike"})
+    service_id: str | None = Field(default=None, json_schema_extra={"example": "web-checkout"})
     description: str = Field(default="", json_schema_extra={"example": "Checkout error rate surge"})
+    dry_run: bool = False
 
 
 @router.post("/run")
@@ -27,12 +28,36 @@ async def trigger_agent_run(
     tenant: str = Depends(get_tenant),
 ) -> dict[str, Any]:
     """Trigger multi-agent incident triage workflow (Scout -> Planner -> Scribe)."""
+    title = payload.title
+    service_id = payload.service_id
+    description = payload.description
+
+    if not title or not service_id:
+        incidents_path = (
+            Path(__file__).resolve().parent.parent.parent.parent
+            / "fixtures/company/demo_incidents.json"
+        )
+        if incidents_path.exists():
+            try:
+                with open(incidents_path, encoding="utf-8") as f:
+                    canned = json.load(f).get("incidents", [])
+                    for inc in canned:
+                        if inc.get("id") == payload.incident_id:
+                            title = title or inc.get("title")
+                            service_id = service_id or inc.get("service_id")
+                            description = description or inc.get("description", "")
+                            break
+            except Exception:
+                pass
+        title = title or f"Incident {payload.incident_id}"
+        service_id = service_id or "web-checkout"
+
     runtime = AgentRuntime(tenant=tenant)
     res = await runtime.run_incident_triage(
         incident_id=payload.incident_id,
-        title=payload.title,
-        service_id=payload.service_id,
-        description=payload.description,
+        title=title,
+        service_id=service_id,
+        description=description,
     )
     return res
 

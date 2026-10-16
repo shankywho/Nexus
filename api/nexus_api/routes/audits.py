@@ -29,14 +29,16 @@ class AuditResponse(BaseModel):
     run_id: str = ""
 
 
-@router.post("/who-owns-what", response_model=AuditResponse)
+@router.api_route("/who-owns-what", methods=["GET", "POST"], response_model=AuditResponse)
+@router.api_route("/owners", methods=["GET", "POST"], response_model=AuditResponse)
 def audit_who_owns_what() -> dict[str, Any]:
     """Execute WHO OWNS WHAT audit."""
     settings = get_settings()
     return run_who_owns_what(org_id=settings.NEXUS_ORG_ID)
 
 
-@router.post("/decision-trace", response_model=AuditResponse)
+@router.api_route("/decision-trace", methods=["GET", "POST"], response_model=AuditResponse)
+@router.api_route("/trace", methods=["GET", "POST"], response_model=AuditResponse)
 def audit_decision_trace(params: DecisionTraceParams | None = None) -> dict[str, Any]:
     """Execute DECISION TRACE audit."""
     settings = get_settings()
@@ -47,14 +49,15 @@ def audit_decision_trace(params: DecisionTraceParams | None = None) -> dict[str,
     )
 
 
-@router.post("/stale-knowledge", response_model=AuditResponse)
+@router.api_route("/stale-knowledge", methods=["GET", "POST"], response_model=AuditResponse)
+@router.api_route("/stale", methods=["GET", "POST"], response_model=AuditResponse)
 def audit_stale_knowledge() -> dict[str, Any]:
     """Execute STALE / SUPERSEDED KNOWLEDGE audit."""
     settings = get_settings()
     return run_stale_knowledge(org_id=settings.NEXUS_ORG_ID)
 
 
-@router.post("/bus-factor", response_model=AuditResponse)
+@router.api_route("/bus-factor", methods=["GET", "POST"], response_model=AuditResponse)
 def audit_bus_factor() -> dict[str, Any]:
     """Execute BUS FACTOR / SME FINDER audit."""
     settings = get_settings()

@@ -278,7 +278,8 @@ export async function fetchDemoIncidents(): Promise<DemoIncident[]> {
 
 export async function triggerAgentRun(
   incidentId: string,
-  tenant = "acme"
+  tenant = "acme",
+  incidentData?: Partial<DemoIncident>
 ): Promise<AgentRunResponse> {
   const res = await fetch(`${BASE_URL}/agents/run`, {
     method: "POST",
@@ -286,7 +287,13 @@ export async function triggerAgentRun(
       "Content-Type": "application/json",
       "X-Tenant": tenant,
     },
-    body: JSON.stringify({ incident_id: incidentId, dry_run: false }),
+    body: JSON.stringify({
+      incident_id: incidentId,
+      title: incidentData?.title,
+      service_id: incidentData?.service_id,
+      description: incidentData?.description,
+      dry_run: false,
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
