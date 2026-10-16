@@ -43,5 +43,13 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 - **First-Name Only Tags:** Formatted name tags below desks to display only first names ("Kabir", "Ananya", "Arjun", "Sarah", etc.) in crisp 11px mono with a 1px border. Full names and role descriptions are preserved in the tooltip and side inspector.
 - **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified alignment and zero truncated labels at both 1440×900 and 1920×1080, and saved screenshots to `docs/img/ui/phase-4-1440x900.png` and `docs/img/ui/phase-4-1920x1080.png`.
 
+### Phase 5: Whiteboards, Decision Notes & Floor Audit Highlights
+- **Back-Wall Whiteboards & 24x20 Sticky Note Sprites:** Placed an interactive decision whiteboard on the back wall of each engineering team room. Decisions affecting that team's services pin as 24×20 pixel sticky note sprites with individual pinheads. Live decisions render in cream (`#f6efd6`); replaced decisions render in amber (`var(--nx-warn)`) with a pixel strike-through. On cold start, empty whiteboards display a faint "NO DECISIONS YET" placeholder.
+- **Supersede Replay Flip Animation (`.nx-note-flip`):** Engineered a 6-frame `steps(6, end)` flip animation (`@keyframes nx-flip-amber`) triggered at the exact moment a decision is superseded during the sync replay. Verified that `DEC-017` flips from cream to amber on the Platform Infrastructure whiteboard when `DEC-021` is ingested.
+- **Flying Envelopes on Ingest (`.nx-flying-envelope`):** Added pixel envelope flight animations along curved trajectories across the floor on incoming ingestion stream events (`✉`).
+- **Interactive Audit Highlighting (`.nx-audit-pulse`):** Wired audit runs (`OWNERS`, `TRACE`, `STALE`, `BUS FACTOR`) to highlight matching desks, racks, and decision notes on the floor with a pulsing `--nx-info` glow (`.nx-audit-pulse`), while automatically dimming unselected elements to 35% opacity. Supports toggling active audit or pressing `Esc` to clear.
+- **Deliverables:** Built cleanly (`npm run lint && npm run build`), validated real-time note flip to amber during live replay sync, and saved screenshots to `docs/img/ui/phase-5-1440x900.png` and `docs/img/ui/phase-5-1920x1080.png`.
+
+
 
 

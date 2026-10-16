@@ -243,6 +243,43 @@ select.nx-input {
 @keyframes nx-pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
 .nx-pop { animation: nx-pop 0.5s steps(5, end) 1; }
 
+@keyframes nx-flip-amber {
+  0% { transform: scaleY(1) rotate(0deg); background: var(--nx-text); }
+  25% { transform: scaleY(0.1) rotate(-5deg); background: var(--nx-text); }
+  50% { transform: scaleY(0.1) rotate(5deg); background: var(--nx-warn); }
+  75% { transform: scaleY(0.8) rotate(-3deg); background: var(--nx-warn); }
+  100% { transform: scaleY(1) rotate(-2deg); background: var(--nx-warn); }
+}
+.nx-note-flip {
+  animation: nx-flip-amber 300ms steps(6, end) 1;
+}
+
+@keyframes nx-audit-pulse {
+  0%, 100% {
+    outline-color: var(--nx-info);
+    box-shadow: 0 0 10px var(--nx-info);
+  }
+  50% {
+    outline-color: var(--nx-ink);
+    box-shadow: 0 0 2px var(--nx-info);
+  }
+}
+.nx-audit-pulse {
+  outline: 2px solid var(--nx-info) !important;
+  animation: nx-audit-pulse 1s steps(4, end) infinite;
+}
+
+@keyframes nx-flight {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translate(var(--tx, 140px), var(--ty, -60px)) scale(1); opacity: 0; }
+}
+.nx-flying-envelope {
+  animation: nx-flight 600ms steps(12, end) 1 forwards;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nx-blink, .nx-flash, .nx-enter, .nx-stride, .nx-hop, .nx-scr, .nx-cursor,
   .nx-bubble-life, .nx-alert, .nx-slam, .nx-pop { animation: none !important; }

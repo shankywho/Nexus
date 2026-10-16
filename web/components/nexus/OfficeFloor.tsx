@@ -251,6 +251,7 @@ export function OfficeFloor({
   data,
   highlightIds,
   onNodeClick,
+  event,
   latestStep,
   latestHandoff,
   activeAgent,
@@ -261,6 +262,7 @@ export function OfficeFloor({
 
   // Track flip animations when decisions are superseded
   const [supersededSet, setSupersededSet] = useState<Set<string>>(new Set());
+  const [justFlipped, setJustFlipped] = useState<Set<string>>(new Set());
   const prevSuperseded = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -272,6 +274,21 @@ export function OfficeFloor({
         }
       })
     );
+
+    // Identify newly superseded decisions to trigger 6-frame flip
+    const newlyFlipped = new Set<string>();
+    cur.forEach((id) => {
+      if (!prevSuperseded.current.has(id) && prevSuperseded.current.size > 0) {
+        newlyFlipped.add(id);
+      }
+    });
+
+    if (newlyFlipped.size > 0) {
+      setJustFlipped(newlyFlipped);
+      const t = setTimeout(() => setJustFlipped(new Set()), 600);
+      return () => clearTimeout(t);
+    }
+
     setSupersededSet(cur);
     prevSuperseded.current = cur;
   }, [rooms, supersededBy]);
@@ -366,7 +383,7 @@ export function OfficeFloor({
                         key={svc.id}
                         type="button"
                         onClick={() => onNodeClick(svc)}
-                        className="flex flex-col items-center justify-center cursor-pointer nx-hover p-1"
+                        className={`flex flex-col items-center justify-center cursor-pointer nx-hover p-1 ${lit ? "nx-audit-pulse" : ""}`}
                         style={{
                           width: 76,
                           height: 72,
@@ -452,9 +469,10 @@ export function OfficeFloor({
                     </span>
                   ) : (
                     /* Sticky Notes for Decisions (24x20) */
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {room.decisions.slice(0, 4).map((d) => {
                         const isDead = supersededSet.has(d.id);
+                        const isFlipped = justFlipped.has(d.id);
                         const lit = highlightSet.has(d.id);
                         const dimmed = isDimmed(d.id);
                         const summary = str(d.properties?.summary);
@@ -464,34 +482,47 @@ export function OfficeFloor({
                             key={d.id}
                             type="button"
                             onClick={() => onNodeClick(d)}
-                            className="flex flex-col items-center justify-center cursor-pointer nx-hover"
+                            className={`flex flex-col items-center justify-center cursor-pointer relative ${isFlipped ? "nx-note-flip" : ""} ${lit ? "nx-audit-pulse" : ""}`}
                             style={{
-                              width: 44,
-                              height: 48,
-                              background: isDead ? "var(--nx-warn)" : "var(--nx-text)",
+                              width: 24,
+                              height: 20,
+                              background: isDead ? "var(--nx-warn)" : "#f6efd6",
                               color: "var(--nx-ink)",
                               border: "1px solid var(--nx-ink)",
-                              boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.4)",
                               outline: lit ? "2px solid var(--nx-info)" : "none",
                               opacity: dimmed ? 0.35 : 1,
                               transform: isDead ? "rotate(-2deg)" : "rotate(1deg)",
-                              transition: "transform 0.3s steps(6)",
                             }}
                             title={`${d.id}: ${summary}${isDead ? " (SUPERSEDED)" : " (LIVE)"}`}
                             data-testid={`board-${d.id}`}
                           >
-                            <span className="nx-display text-[9px] font-bold">{d.id.replace("DEC-", "#")}</span>
                             <span
-                              className="nx-mono text-[8px] font-bold"
-                              style={{ textDecoration: isDead ? "line-through" : "none" }}
+                              style={{
+                                position: "absolute",
+                                top: -2,
+                                width: 3,
+                                height: 3,
+                                background: isDead ? "var(--nx-muted)" : "var(--nx-bad)",
+                                boxShadow: "0 0 0 1px var(--nx-ink)",
+                              }}
+                            />
+                            <span
+                              className="nx-mono font-bold"
+                              style={{
+                                fontSize: 8,
+                                lineHeight: 1,
+                                textDecoration: isDead ? "line-through" : "none",
+                                color: "var(--nx-ink)",
+                              }}
                             >
-                              {isDead ? "OLD" : "LIVE"}
+                              {d.id.replace("DEC-", "")}
                             </span>
                           </button>
                         );
                       })}
                       {room.decisions.length > 4 && (
-                        <span className="nx-mono text-xs font-bold" style={{ color: "var(--nx-muted)" }}>
+                        <span className="nx-mono text-[10px] font-bold" style={{ color: "var(--nx-muted)" }}>
                           +{room.decisions.length - 4}
                         </span>
                       )}
@@ -520,7 +551,7 @@ export function OfficeFloor({
                       key={person.id}
                       type="button"
                       onClick={() => onNodeClick(person)}
-                      className="flex flex-col items-center justify-end cursor-pointer nx-hover p-1 relative"
+                      className={`flex flex-col items-center justify-end cursor-pointer nx-hover p-1 relative ${lit ? "nx-audit-pulse" : ""}`}
                       style={{
                         width: 76,
                         height: 76,
@@ -574,6 +605,25 @@ export function OfficeFloor({
           </section>
         );
       })}
+
+      {event && (
+        <div
+          key={event.seq || event.id}
+          className="nx-flying-envelope absolute z-30 pointer-events-none"
+          style={{
+            top: "40%",
+            left: "35%",
+            "--tx": "140px",
+            "--ty": "-60px",
+          } as React.CSSProperties}
+          aria-hidden="true"
+        >
+          <svg width="22" height="15" viewBox="0 0 22 15" style={{ imageRendering: "pixelated" }}>
+            <rect width="22" height="15" fill="#f6efd6" stroke="var(--nx-ink)" strokeWidth="1.5" />
+            <polyline points="2,2 11,8 20,2" fill="none" stroke="var(--nx-ink)" strokeWidth="1.5" />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
