@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import type { TopologyNode, AgentStepTrace } from "@/lib/nexus/api";
 import { buildRooms, AGENT_POD_ID, str, type Room } from "@/lib/nexus/office";
 import { SPRITE_SKIN, SPRITE_HAIR } from "@/lib/nexus/tokens";
-import type { IngestEvent } from "@/lib/nexus/events";
+import { describeEvent, type IngestEvent } from "@/lib/nexus/events";
 import type { TaskHandoffEvent } from "@/lib/nexus/useAgentStream";
 
 interface OfficeFloorProps {
@@ -44,6 +44,92 @@ const hash = (s: string): number => {
   for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h;
 };
+
+const clip = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+function wrap(text: string, width: number, maxLines: number): string[] {
+  const lines: string[] = [];
+  let cur = "";
+  text.split(" ").forEach((w) => {
+    if (cur && `${cur} ${w}`.length > width) {
+      lines.push(cur);
+      cur = w;
+    } else cur = cur ? `${cur} ${w}` : w;
+  });
+  if (cur) lines.push(cur);
+  const out = lines.slice(0, maxLines);
+  if (lines.length > maxLines) out[maxLines - 1] = clip(`${out[maxLines - 1]} …`, width);
+  return out.map((l) => clip(l, width));
+}
+
+function getEnvelopeColor(kind?: string | null): string {
+  switch (kind) {
+    case "incident":
+      return "var(--nx-bad)";
+    case "linear_ticket":
+      return "var(--nx-warn)";
+    case "github_pr":
+      return "var(--nx-ok)";
+    case "slack_message":
+      return "var(--nx-info)";
+    case "adr":
+      return "var(--nx-note)";
+    case "notion_doc":
+      return "var(--room-platform)";
+    default:
+      return "var(--nx-note)";
+  }
+}
+
+/** Pixel speech bubble for live events and hover details */
+function PixelBubble({
+  lines,
+  isAlert = false,
+  isLive = false,
+}: {
+  lines: string[];
+  isAlert?: boolean;
+  isLive?: boolean;
+}) {
+  return (
+    <div
+      className={`absolute z-30 pointer-events-none flex flex-col items-center ${isLive ? "nx-bubble-life" : ""}`}
+      style={{
+        bottom: "calc(100% + 2px)",
+        left: "50%",
+        transform: "translateX(-50%)",
+        filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.6))",
+      }}
+    >
+      <div
+        className="nx-mono text-[9px] font-bold leading-tight px-1.5 py-1 whitespace-pre text-center"
+        style={{
+          background: isAlert ? "var(--nx-bad)" : "var(--nx-note)",
+          color: "var(--nx-ink)",
+          border: "1px solid var(--nx-ink)",
+          maxWidth: 130,
+        }}
+      >
+        {lines.map((l, i) => (
+          <div key={i} className="truncate max-w-[120px]">
+            {l}
+          </div>
+        ))}
+      </div>
+      {/* Downward pointing pixel tail */}
+      <div
+        style={{
+          width: 0,
+          height: 0,
+          borderLeft: "4px solid transparent",
+          borderRight: "4px solid transparent",
+          borderTop: `4px solid ${isAlert ? "var(--nx-bad)" : "var(--nx-note)"}`,
+          marginTop: -1,
+        }}
+      />
+    </div>
+  );
+}
 
 /** Pixel person avatar, 10x10 grid rendered at 32x32 */
 function PersonSprite({ seed, shirt }: { seed: string; shirt: string }) {
@@ -119,7 +205,7 @@ function AgentRobotSprite({ seed, role }: { seed: string; role: string }) {
   );
 }
 
-/** 48x48 Server rack sprite with animated blinkers */
+/** 48x48 Server rack sprite with animated blinkers and incident radar */
 function RackSprite({ isDown, isHighlighted }: { isDown: boolean; isHighlighted: boolean }) {
   return (
     <svg
@@ -128,9 +214,26 @@ function RackSprite({ isDown, isHighlighted }: { isDown: boolean; isHighlighted:
       viewBox="0 0 48 48"
       style={{
         imageRendering: "pixelated",
+        overflow: "visible",
         filter: isHighlighted ? "drop-shadow(0 0 6px var(--nx-info))" : undefined,
       }}
     >
+      {/* Incident radar pulsing ringout waves */}
+      {isDown &&
+        [0, 0.35, 0.7].map((d) => (
+          <circle
+            key={d}
+            className="nx-ringout"
+            cx="24"
+            cy="24"
+            r="12"
+            fill="none"
+            stroke="var(--nx-bad)"
+            strokeWidth="2"
+            style={{ animationDelay: `${d}s` }}
+          />
+        ))}
+
       {/* Outer frame */}
       <rect x="2" y="2" width="44" height="44" fill="var(--nx-panel-2)" stroke="var(--nx-ink)" strokeWidth="2" />
       <rect x="4" y="4" width="40" height="40" fill="var(--nx-panel)" />
@@ -175,8 +278,9 @@ function RackSprite({ isDown, isHighlighted }: { isDown: boolean; isHighlighted:
   );
 }
 
-/** 64x32 Desk sprite with computer monitor */
-function DeskSprite({ isAgent }: { isAgent: boolean }) {
+/** 64x32 Desk sprite with computer monitor, scrolling code, and blinking cursor */
+function DeskSprite({ isAgent, seed = "desk" }: { isAgent: boolean; seed?: string }) {
+  const h = hash(seed);
   return (
     <svg width="64" height="32" viewBox="0 0 64 32" style={{ imageRendering: "pixelated" }}>
       {/* Desk surface */}
@@ -192,10 +296,22 @@ function DeskSprite({ isAgent }: { isAgent: boolean }) {
         height="12"
         fill={isAgent ? "rgba(108, 182, 255, 0.2)" : "rgba(126, 226, 168, 0.15)"}
       />
-      {/* Code lines on screen */}
-      <line x1="24" y1="7" x2="38" y2="7" stroke={isAgent ? "var(--nx-info)" : "var(--nx-ok)"} strokeWidth="1" />
-      <line x1="24" y1="10" x2="34" y2="10" stroke={isAgent ? "var(--nx-info)" : "var(--nx-ok)"} strokeWidth="1" />
-      <line x1="24" y1="13" x2="30" y2="13" stroke="var(--nx-accent)" strokeWidth="1" />
+      {/* Animated scrolling code lines on screen */}
+      <svg x="22" y="4" width="20" height="12" overflow="hidden">
+        <g className="nx-scr" style={{ animationDelay: `-${(h % 24) / 10}s` }}>
+          {[2, 6, 10, 14, 18, 22].map((yy, n) => (
+            <rect
+              key={yy}
+              x="2"
+              y={yy}
+              width={6 + ((h + n * 5) % 4) * 2.5}
+              height="2"
+              fill={n % 2 ? "var(--nx-info)" : "var(--nx-ok)"}
+            />
+          ))}
+        </g>
+        <rect className="nx-cursor" x="2" y="8" width="3" height="2" fill="var(--nx-text)" />
+      </svg>
 
       {/* Keyboard */}
       <rect x="22" y="20" width="20" height="6" fill="var(--nx-ink)" />
@@ -260,6 +376,17 @@ export function OfficeFloor({
   const highlightSet = useMemo(() => new Set(highlightIds), [highlightIds]);
   const hasHighlights = highlightIds.length > 0;
 
+  // Track hover for responsibilities bubble
+  const [hover, setHover] = useState<string | null>(null);
+
+  // Track active events/steps on people and agents (for hop, glow, speech bubble)
+  const [active, setActive] = useState<Record<string, { seq: number; label: string; isAlert: boolean }>>({});
+
+  // Flying envelopes queue
+  const [envelopes, setEnvelopes] = useState<
+    Array<{ id: number | string; kind?: string | null; fromX: string; fromY: string; toX: string; toY: string }>
+  >([]);
+
   // Track flip animations when decisions are superseded
   const [supersededSet, setSupersededSet] = useState<Set<string>>(new Set());
   const [justFlipped, setJustFlipped] = useState<Set<string>>(new Set());
@@ -293,6 +420,117 @@ export function OfficeFloor({
     prevSuperseded.current = cur;
   }, [rooms, supersededBy]);
 
+  // Handle live ingest events: avatar hop, halo glow, speech bubble, flying envelope
+  useEffect(() => {
+    if (!event) return undefined;
+    const isIncident = event.kind === "incident";
+    const label = describeEvent(event);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // Find person matching event.actor
+    let matchedId: string | null = null;
+    let roomIdx = 0;
+    if (event.actor) {
+      const actorLower = event.actor.toLowerCase();
+      for (let r = 0; r < rooms.length; r += 1) {
+        const room = rooms[r];
+        for (const p of room.people) {
+          const pName = (p.name || "").toLowerCase();
+          const pId = p.id.toLowerCase();
+          const pFirst = pName.split(" ")[0];
+          if (
+            pId === actorLower ||
+            pName === actorLower ||
+            pFirst === actorLower ||
+            pId.includes(actorLower) ||
+            actorLower.includes(pId)
+          ) {
+            matchedId = p.id;
+            roomIdx = r;
+            break;
+          }
+        }
+        if (matchedId) break;
+      }
+
+      if (matchedId) {
+        const id = matchedId;
+        setActive((cur) => ({ ...cur, [id]: { seq: event.seq, label, isAlert: isIncident } }));
+        timers.push(
+          setTimeout(() => {
+            setActive((cur) => {
+              if (cur[id]?.seq !== event.seq) return cur;
+              const { [id]: _removed, ...rest } = cur;
+              return rest;
+            });
+          }, 2400)
+        );
+      }
+    }
+
+    // Spawn flying envelope across rooms
+    const envId = event.seq || Date.now();
+    // In 2x2 grid: room 0 top-left, room 1 top-right, room 2 mid-left, room 3 mid-right
+    const isLeft = roomIdx % 2 === 0;
+    const isTop = roomIdx < 2;
+    const startX = isLeft ? "25%" : "75%";
+    const startY = isTop ? "25%" : "55%";
+    const targetX = isLeft ? "180px" : "-180px";
+    const targetY = isIncident ? "-70px" : "60px";
+
+    setEnvelopes((cur) => [
+      ...cur.slice(-4),
+      {
+        id: envId,
+        kind: event.kind,
+        fromX: startX,
+        fromY: startY,
+        toX: targetX,
+        toY: targetY,
+      },
+    ]);
+    timers.push(
+      setTimeout(() => {
+        setEnvelopes((cur) => cur.filter((e) => e.id !== envId));
+      }, 600)
+    );
+
+    return () => timers.forEach(clearTimeout);
+  }, [event, rooms]);
+
+  // Handle agent stream steps: hop & glow for triage robots
+  useEffect(() => {
+    if (!latestStep) return undefined;
+    const agentName = (latestStep.agent || "").toLowerCase();
+    let matchedId: string | null = null;
+    for (const room of rooms) {
+      for (const p of room.people) {
+        if (
+          p.properties?.is_agent &&
+          (p.id.toLowerCase().includes(agentName) || p.name.toLowerCase().includes(agentName))
+        ) {
+          matchedId = p.id;
+          break;
+        }
+      }
+      if (matchedId) break;
+    }
+    if (matchedId) {
+      const id = matchedId;
+      const label = latestStep.tool ? `runs ${latestStep.tool}` : "triage step";
+      const seq = Date.now();
+      setActive((cur) => ({ ...cur, [id]: { seq, label, isAlert: false } }));
+      const t = setTimeout(() => {
+        setActive((cur) => {
+          if (cur[id]?.seq !== seq) return cur;
+          const { [id]: _removed, ...rest } = cur;
+          return rest;
+        });
+      }, 2400);
+      return () => clearTimeout(t);
+    }
+  }, [latestStep, rooms]);
+
   const isDimmed = (id: string) => {
     if (!hasHighlights) return false;
     return !highlightSet.has(id);
@@ -310,6 +548,7 @@ export function OfficeFloor({
         gap: "var(--s4)",
         height: "100%",
         overflowY: "auto",
+        position: "relative",
       }}
     >
       {rooms.map((room) => {
@@ -545,12 +784,32 @@ export function OfficeFloor({
                   const dimmed = isDimmed(person.id);
                   const note = personNote.get(person.id);
                   const isActiveAgent = activeAgent === person.name.toLowerCase();
+                  const act = active[person.id];
+                  const hovered = hover === person.id;
+
+                  let bubbleLines: string[] | null = null;
+                  let isAlertBubble = false;
+                  let isLiveBubble = false;
+
+                  if (act) {
+                    bubbleLines = wrap(act.label, 16, 2);
+                    isAlertBubble = act.isAlert;
+                    isLiveBubble = true;
+                  } else if (hovered && note) {
+                    bubbleLines = [note.verb, clip(note.target, 16)];
+                    isAlertBubble = false;
+                    isLiveBubble = false;
+                  }
 
                   return (
                     <button
                       key={person.id}
                       type="button"
                       onClick={() => onNodeClick(person)}
+                      onMouseEnter={() => setHover(person.id)}
+                      onMouseLeave={() => setHover((h) => (h === person.id ? null : h))}
+                      onFocus={() => setHover(person.id)}
+                      onBlur={() => setHover((h) => (h === person.id ? null : h))}
                       className={`flex flex-col items-center justify-end cursor-pointer nx-hover p-1 relative ${lit ? "nx-audit-pulse" : ""}`}
                       style={{
                         width: 76,
@@ -565,6 +824,15 @@ export function OfficeFloor({
                       title={`${fullName} · ${role || (isAgent ? "Agent" : "Engineer")}${note ? ` · ${note.verb} ${note.target}` : ""}`}
                       data-testid={`desk-${person.id}`}
                     >
+                      {/* Speech Bubble on Event or Hover */}
+                      {bubbleLines && (
+                        <PixelBubble
+                          lines={bubbleLines}
+                          isAlert={isAlertBubble}
+                          isLive={isLiveBubble}
+                        />
+                      )}
+
                       {/* Seated Avatar with 6px desk overlap */}
                       <div
                         style={{
@@ -573,15 +841,33 @@ export function OfficeFloor({
                           zIndex: 1,
                         }}
                       >
-                        {isAgent ? (
-                          <AgentRobotSprite seed={person.id} role={role} />
-                        ) : (
-                          <PersonSprite seed={person.id} shirt={theme.accent} />
+                        {/* Pulsing work halo glow behind avatar when active */}
+                        {act && (
+                          <span
+                            key={`glow-${act.seq}`}
+                            className="nx-glow"
+                            style={{
+                              position: "absolute",
+                              inset: -4,
+                              background: isAgent ? "var(--nx-info)" : "var(--nx-accent)",
+                              opacity: 0.45,
+                              pointerEvents: "none",
+                              zIndex: 0,
+                            }}
+                          />
                         )}
+
+                        <div key={act ? `hop-${act.seq}` : "rest"} className={act ? "nx-hop" : undefined}>
+                          {isAgent ? (
+                            <AgentRobotSprite seed={person.id} role={role} />
+                          ) : (
+                            <PersonSprite seed={person.id} shirt={theme.accent} />
+                          )}
+                        </div>
                       </div>
 
-                      {/* Desk Base */}
-                      <DeskSprite isAgent={isAgent} />
+                      {/* Desk Base with scrolling code lines & blinking cursor */}
+                      <DeskSprite isAgent={isAgent} seed={person.id} />
 
                       {/* Name Tag: First name only, max-width: 74px, 1px border */}
                       <div
@@ -606,24 +892,27 @@ export function OfficeFloor({
         );
       })}
 
-      {event && (
+      {/* Multi-colored flying envelopes across the office floor */}
+      {envelopes.map((env) => (
         <div
-          key={event.seq || event.id}
+          key={env.id}
           className="nx-flying-envelope absolute z-30 pointer-events-none"
-          style={{
-            top: "40%",
-            left: "35%",
-            "--tx": "140px",
-            "--ty": "-60px",
-          } as React.CSSProperties}
+          style={
+            {
+              top: env.fromY,
+              left: env.fromX,
+              "--tx": env.toX,
+              "--ty": env.toY,
+            } as React.CSSProperties
+          }
           aria-hidden="true"
         >
           <svg width="22" height="15" viewBox="0 0 22 15" style={{ imageRendering: "pixelated" }}>
-            <rect width="22" height="15" fill="var(--nx-note)" stroke="var(--nx-ink)" strokeWidth="1.5" />
+            <rect width="22" height="15" fill={getEnvelopeColor(env.kind)} stroke="var(--nx-ink)" strokeWidth="1.5" />
             <polyline points="2,2 11,8 20,2" fill="none" stroke="var(--nx-ink)" strokeWidth="1.5" />
           </svg>
         </div>
-      )}
+      ))}
     </div>
   );
 }

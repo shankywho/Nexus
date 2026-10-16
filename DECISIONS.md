@@ -108,6 +108,26 @@ This log records design decisions, tradeoffs, and judgment calls made during the
   - [x] **Dynamic legend dimming:** Footer legend dynamically dims items with 0 count on screen; top-left graph HUD legend renders all 5 edge types with exact matching stroke styles.
   - [x] **Simultaneous supersede moment:** Real-time sync replay triggers 6-frame flip animation turning `DEC-017` amber on the Platform whiteboard, draws amber curved "replaces" arc with arrowhead in the graph view, and renders `REPLACED → DEC-021` chip in the decision ledger drawer simultaneously.
 
+## Office Floor Live Motion Restoration (Post-Phase 9 Polish)
+
+- **Context & Goal:**
+  - In response to user feedback requesting the restoration of live event-driven animations from earlier iterations (`8bb119a`), the office floor micro-animations were reintroduced while strictly respecting the Phase 1–9 design token constraints (0 rounded classes, 0 sans-serif, 0 raw `#hex`, 0 emojis, 2 fonts only).
+- **Implemented Animations & Behavior:**
+  1. **Desk Monitors (`nx-scr` + `nx-cursor`):**
+     - Computer monitors feature animated scrolling code lines (`nx-scr`) in mint/sky with randomized delay offsets (`-(hash % 24) / 10s`) and a 1.06s blinking cursor (`nx-cursor`).
+  2. **Server Rack Incident Radar (`nx-ringout`):**
+     - Racks with active incidents radiate 3 concentric radar wave rings (`nx-ringout`, 1.2s stepped pulse at 0s, 0.35s, 0.7s offsets) in `var(--nx-bad)` alongside the blinking top LED.
+  3. **Avatar Hop & Halo Glow (`nx-hop` + `nx-glow`):**
+     - When an ingest event arrives or an agent executes a triage step, the affected person/agent avatar hops (`nx-hop`: 0.9s steps(6)) and displays a pulsing work aura (`nx-glow`: 1.2s steps(8)).
+  4. **Pixel Speech Bubbles (`nx-bubble-life`):**
+     - Live events pop a pixel speech bubble with crisp stepped edges and a pixel tail above the actor displaying `describeEvent(event)` for 2.4s.
+     - Hovering over any desk displays the person's responsibility card (`note.verb` + `note.target`).
+  5. **Cross-Room Flying Envelopes (`nx-flying-envelope`):**
+     - Multi-colored envelopes fly across room grids from actors to target services or decisions, colored by event kind (`var(--nx-bad)` for incidents, `var(--nx-warn)` for tickets, `var(--nx-ok)` for PRs, `var(--nx-info)` for Slack, `var(--nx-note)` for ADRs).
+  6. **Accessibility & Token Safety:**
+     - All keyframes (`nx-glow`, `nx-ringout`, `nx-hop`, `nx-scr`, `nx-cursor`, `nx-flying-envelope`) are explicitly disabled under `@media (prefers-reduced-motion: reduce)`.
+     - Zero raw `#hex` or non-standard styles: all colors utilize CSS variables (`var(--nx-note)`, `var(--nx-bad)`, `var(--nx-ok)`, `var(--nx-info)`, `var(--nx-ink)`).
+
 
 
 
