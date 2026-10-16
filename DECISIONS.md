@@ -74,6 +74,21 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 - **Viewport Fitting:** Implemented automated `zoomToFit(400ms, padding 48)` on initial mount, container resize via `ResizeObserver`, and replay sync batch ingestion.
 - **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified all hub/service/decision labels readable with zero overlaps, and saved screenshots to `docs/img/ui/phase-7-1440x900.png` and `docs/img/ui/phase-7-1920x1080.png`.
 
+### Phase 8: Motion, Reduced-Motion & Focus States
+- **Pixel Motion Timing:** Standardized all UI micro-animations to strict `steps()` timing:
+  - Envelope flight on ingestion: 600ms (`steps(12, end)`).
+  - Whiteboard note flip on supersede: 300ms (`steps(6, end)`).
+  - Decision counter flash on supersede: 400ms (`steps(8, end)`).
+  - Audit pulsing highlight: 1s (`steps(4, end)`).
+- **Reduced Motion Compliance (`prefers-reduced-motion: reduce`):**
+  - Configured `@media (prefers-reduced-motion: reduce)` to disable all sprite flights, note flips, and flashes, setting animation durations to 0.01ms and hiding flying envelopes entirely. State updates remain instant without motion.
+- **Universal Keyboard Focus Navigation:**
+  - Standardized `:focus-visible` across all interactive elements (`button`, `select`, `input`, `a`, `.nx-btn`, `.nx-chip`) with `outline: 2px solid var(--nx-info) !important; outline-offset: 2px !important;`.
+  - Replaced inline `outline: "none"` on desk and rack buttons with `undefined` to allow native focus outlines to show uninhibited during keyboard `Tab` traversal.
+  - Verified that every control on the floor, in the panels, and in drawers is reachable and operable via keyboard.
+- **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified keyboard navigation across all controls and reduced-motion enforcement, and saved screenshots to `docs/img/ui/phase-8-1440x900.png` and `docs/img/ui/phase-8-1920x1080.png`.
+
+
 
 
 

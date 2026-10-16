@@ -390,7 +390,7 @@ export function OfficeFloor({
                           background: "none",
                           border: "none",
                           opacity: dimmed ? 0.35 : 1,
-                          outline: lit ? "2px solid var(--nx-info)" : "none",
+                          outline: lit ? "2px solid var(--nx-info)" : undefined,
                           boxShadow: lit ? "0 0 10px var(--nx-info)" : "none",
                           transition: "opacity 0.2s, outline 0.2s",
                         }}
@@ -445,7 +445,7 @@ export function OfficeFloor({
                               height: 60,
                               background: "var(--nx-panel-2)",
                               border: "1px solid var(--nx-line)",
-                              outline: lit ? "2px solid var(--nx-info)" : "none",
+                              outline: lit ? "2px solid var(--nx-info)" : undefined,
                               opacity: dimmed ? 0.35 : 1,
                             }}
                             title={`${pb.name}: ${str(pb.properties?.summary)}`}
@@ -490,7 +490,7 @@ export function OfficeFloor({
                               color: "var(--nx-ink)",
                               border: "1px solid var(--nx-ink)",
                               boxShadow: "0 1px 2px rgba(0,0,0,0.4)",
-                              outline: lit ? "2px solid var(--nx-info)" : "none",
+                              outline: lit ? "2px solid var(--nx-info)" : undefined,
                               opacity: dimmed ? 0.35 : 1,
                               transform: isDead ? "rotate(-2deg)" : "rotate(1deg)",
                             }}
@@ -558,7 +558,7 @@ export function OfficeFloor({
                         background: "none",
                         border: "none",
                         opacity: dimmed ? 0.35 : 1,
-                        outline: lit ? "2px solid var(--nx-info)" : "none",
+                        outline: lit ? "2px solid var(--nx-info)" : undefined,
                         boxShadow: lit ? "0 0 10px var(--nx-info)" : "none",
                         transition: "opacity 0.2s, outline 0.2s",
                       }}

@@ -188,7 +188,12 @@ select.nx-input {
 }
 
 /* Focus styles (§7) */
-.nx :focus-visible {
+.nx :focus-visible,
+:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible {
   outline: 2px solid var(--nx-info) !important;
   outline-offset: 2px !important;
 }
@@ -281,6 +286,31 @@ select.nx-input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nx-blink, .nx-flash, .nx-enter, .nx-stride, .nx-hop, .nx-scr, .nx-cursor,
-  .nx-bubble-life, .nx-alert, .nx-slam, .nx-pop { animation: none !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .nx-blink,
+  .nx-flash,
+  .nx-enter,
+  .nx-stride,
+  .nx-hop,
+  .nx-scr,
+  .nx-cursor,
+  .nx-bubble-life,
+  .nx-alert,
+  .nx-slam,
+  .nx-pop,
+  .nx-note-flip,
+  .nx-flying-envelope,
+  .nx-audit-pulse {
+    animation: none !important;
+  }
+  .nx-flying-envelope {
+    display: none !important;
+  }
 }
