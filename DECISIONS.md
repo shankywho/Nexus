@@ -17,3 +17,12 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 - **Pixel Icons:** Replaced all OS emoji with crisp pixelart SVGs (`PixelRobot`, `PixelLightbulb`, `PixelZap`, `PixelPlay`, `PixelClose`, `PixelInfo`) in `web/components/nexus/PixelIcons.tsx`.
 - **Theme Floors:** Replaced saturated pastel room floors with dark tinted tiles and bright accent stripes (`--room-payments-floor`, `--room-platform-floor`, etc.).
 - **Deliverables:** Built without errors (`npm run lint && npm run build`), captured screenshots at 1440×900 and 1920×1080 to `docs/img/ui/phase-1-*.png`.
+
+### Phase 2: Page Grid, Single-Row Header, Toolbar-Merged Audits & Merged Footer
+- **Single-Row Non-Wrapping Header (56px):** Consolidated header elements to strictly avoid secondary rows or wrapping at 1440px and 1920px. Moved Track qualifications out of a cluttered text badge into an accessible `ⓘ` pixel popover dialog. Replaced separate view buttons with an aligned `.nx-seg` segmented control (`OFFICE | GRAPH`).
+- **Compound Status Chip:** Consolidated system state into a unified chip (`● graph · ● claude · ● stream idle`) fed by `useSystemStatus()` with rich contextual tooltips.
+- **Audits Toolbar Integration:** Relocated the `AUDITS` bar (`OWNERS`, `TRACE`, `STALE`, `BUS FACTOR`) directly into the left side of the floor panel's 44px toolbar (`nx-panel-head`), placing summary statistics (`27 things · 42 links · 0 replaced`) on the right. This completely eliminated the redundant full-width second toolbar row.
+- **Side Panel & Decision Ledger Drawer:** Structured side panel at 420px (responsive to 360px <= 1280px). Implemented a persistent 240px Decision Ledger drawer pinned at the bottom, collapsible to 36px via pixel chevron (`PixelChevronDown` / `PixelChevronUp`). Removed duplicate `Tenant: acme` badge from the side panel to eliminate redundancy with the header select.
+- **Merged Footer (36px):** Replaced disjoint status bars with a single unified 36px footer combining SSE stream status, live source event telemetry counts (Slack, Linear, PRs, ADRs, Docs, Inc), and a dynamically dimmed graph legend on the right.
+- **Deliverables:** Verified zero-wrap at 1440×900 and 1920×1080, verified TypeScript and ESLint (`npm run lint && npm run build`), and saved screenshots to `docs/img/ui/phase-2-1440x900.png` and `docs/img/ui/phase-2-1920x1080.png`.
+

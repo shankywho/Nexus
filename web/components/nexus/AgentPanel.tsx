@@ -137,30 +137,13 @@ export function AgentPanel({
           background: "var(--nx-panel-2)",
         }}
       >
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className={`nx-dot ${agentStream.isRunning ? "is-busy nx-blink" : ""}`} />
-            <span className="nx-display text-xs" style={{ color: "var(--nx-sky)" }}>
-              Autonomous Triage Pod
-            </span>
-          </div>
-          <span
-            className="nx-chip text-xs"
-            title={`Tenant isolation active for '${tenant}'`}
-          >
-            <span style={{ color: "var(--nx-dim)" }}>Tenant:</span>
-            <span style={{ color: "var(--nx-lemon)", fontWeight: 700 }}>{tenant}</span>
-          </span>
-        </div>
-
-        {/* Incident Trigger Control */}
         <div className="flex items-center gap-2">
           <select
             value={selectedIncidentId}
             onChange={(e) => setSelectedIncidentId(e.target.value)}
             disabled={loadingRun || agentStream.isRunning}
             className="nx-input nx-mono flex-1 text-xs"
-            style={{ height: 32, padding: "4px 8px" }}
+            style={{ height: 36, padding: "0 8px" }}
             data-testid="incident-select"
           >
             {incidents.map((inc) => (
@@ -174,13 +157,14 @@ export function AgentPanel({
             type="button"
             onClick={() => handleRunAgent()}
             disabled={loadingRun || agentStream.isRunning}
-            className="nx-btn is-warn text-xs whitespace-nowrap"
+            className="nx-btn nx-btn--warn text-xs whitespace-nowrap"
+            style={{ height: 36, padding: "0 12px" }}
             data-testid="page-agents-btn"
           >
             {loadingRun || agentStream.isRunning ? (
               <>
                 <span className="nx-dot is-busy nx-blink" />
-                <span>Triaging...</span>
+                <span>TRIAGING...</span>
               </>
             ) : (
               <>

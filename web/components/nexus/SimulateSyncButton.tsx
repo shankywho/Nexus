@@ -68,10 +68,10 @@ export function SimulateSyncButton({ onSyncCompleted }: SimulateSyncButtonProps)
       <button
         type="button"
         data-testid="simulate-sync-button"
-        className={`nx-btn ${running ? "is-warn" : "nx-btn--primary"}`}
-        style={{ position: "relative", overflow: "hidden" }}
+        className="nx-btn nx-btn--primary"
+        style={{ position: "relative", overflow: "hidden", minWidth: 130 }}
         onClick={toggle}
-        disabled={loading}
+        disabled={loading || (running && false)}
       >
         {running && (
           <span
@@ -81,14 +81,16 @@ export function SimulateSyncButton({ onSyncCompleted }: SimulateSyncButtonProps)
               top: 0,
               bottom: 0,
               width: `${progressPercent}%`,
-              background: "rgba(0,0,0,0.2)",
+              background: "rgba(0,0,0,0.25)",
               pointerEvents: "none",
             }}
           />
         )}
         {!running && <PixelPlay size={12} />}
         {running && <span className="nx-dot is-busy nx-blink" />}
-        <span style={{ position: "relative", zIndex: 1 }}>{label}</span>
+        <span style={{ position: "relative", zIndex: 1 }}>
+          {running ? `SYNC ${status.processed}/${status.total || "?"}` : label}
+        </span>
       </button>
     </div>
   );
