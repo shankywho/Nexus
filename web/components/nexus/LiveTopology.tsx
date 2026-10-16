@@ -5,11 +5,12 @@ import dynamic from "next/dynamic";
 import { TopologyData, TopologyNode } from "@/lib/nexus/api";
 import { layoutGraph, type GraphLink, type GraphNode } from "@/lib/nexus/graphLayout";
 import { FLOORS, RECORDS_FLOOR } from "@/lib/nexus/theme";
+import { NX } from "@/lib/nexus/tokens";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center" style={{ color: "var(--nx-dim)" }}>
+    <div className="w-full h-full flex items-center justify-center" style={{ color: "var(--nx-muted)" }}>
       Drawing the graph…
     </div>
   ),
@@ -21,13 +22,13 @@ export interface LiveTopologyProps {
   onNodeClick?: (node: TopologyNode) => void;
 }
 
-const INK = "#070c10";
-const CREAM = "#f6ebcb";
-const PAPER = "#f6efd6";
-const PAPER_OLD = "#c4bea6";
-const CORAL = "#ff6b6b";
-const SKY = "#5cc8f0";
-const MINT = "#6be3a5";
+const INK = NX.ink;
+const CREAM = NX.text;
+const PAPER = NX.panel2;
+const PAPER_OLD = NX.panel;
+const CORAL = NX.bad;
+const SKY = NX.info;
+const MINT = NX.ok;
 
 type FGNode = GraphNode & { x: number; y: number; fx: number; fy: number };
 type FGLink = Omit<GraphLink, "source" | "target"> & { source: FGNode | string; target: FGNode | string };
@@ -110,27 +111,27 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
     } else if (n.kind === "person") {
       ctx.beginPath();
       ctx.arc(n.x, n.y, 17, 0, Math.PI * 2);
-      ctx.fillStyle = "#13242f";
+      ctx.fillStyle = NX.panel;
       ctx.fill();
       ctx.lineWidth = isLit ? 4 : 2.5;
-      ctx.strokeStyle = isLit ? "#ffd166" : accent;
+      ctx.strokeStyle = isLit ? NX.accent : accent;
       ctx.stroke();
       ctx.fillStyle = CREAM;
-      ctx.font = `700 ${Math.min(16, 13 / scale)}px "Atkinson Hyperlegible", sans-serif`;
+      ctx.font = `700 ${Math.min(16, 13 / scale)}px "JetBrains Mono", monospace`;
       ctx.fillText(initials(n.label), n.x, n.y + 1);
-      ctx.font = `${fs}px "Atkinson Hyperlegible", sans-serif`;
+      ctx.font = `${fs}px "JetBrains Mono", monospace`;
       ctx.fillStyle = CREAM;
       ctx.fillText(n.label.split(" ")[0], n.x, n.y + 29);
     } else if (n.kind === "service") {
-      ctx.fillStyle = "#3b4a57";
-      ctx.strokeStyle = isLit ? "#ffd166" : INK;
+      ctx.fillStyle = NX.panel2;
+      ctx.strokeStyle = isLit ? NX.accent : INK;
       ctx.lineWidth = isLit ? 4 : 3;
       ctx.beginPath();
-      ctx.roundRect(n.x - 17, n.y - 15, 34, 30, 3);
+      ctx.rect(n.x - 17, n.y - 15, 34, 30);
       ctx.fill();
       ctx.stroke();
       for (let i = 0; i < 3; i += 1) {
-        ctx.fillStyle = "#26323c";
+        ctx.fillStyle = NX.ink;
         ctx.fillRect(n.x - 13, n.y - 11 + i * 9, 26, 6);
         ctx.fillStyle = i === 0 && n.incident ? CORAL : MINT;
         ctx.fillRect(n.x - 10, n.y - 10 + i * 9, 3, 3);
@@ -148,7 +149,7 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
       const c = layout.clusters[n.cluster];
       const dx = n.x - (c?.x ?? 0);
       const dy = n.y - (c?.y ?? 0);
-      ctx.font = `700 ${fs}px "Atkinson Hyperlegible", sans-serif`;
+      ctx.font = `700 ${fs}px "JetBrains Mono", monospace`;
       ctx.fillStyle = CREAM;
       if (!n.hasDecision && Math.abs(dx) > Math.abs(dy) * 0.8) {
         ctx.textAlign = dx > 0 ? "left" : "right";
@@ -160,7 +161,7 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
       const w = 74;
       const h = 36;
       ctx.fillStyle = n.dead ? PAPER_OLD : PAPER;
-      ctx.strokeStyle = isLit ? "#ffd166" : n.dead ? CORAL : INK;
+      ctx.strokeStyle = isLit ? NX.accent : n.dead ? CORAL : INK;
       ctx.lineWidth = isLit ? 4 : 2.5;
       if (n.dead) ctx.setLineDash([5, 3]);
       ctx.beginPath();
@@ -168,11 +169,11 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
       ctx.fill();
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = n.dead ? "#6f6a58" : INK;
-      ctx.font = `700 ${Math.min(15, 13 / scale)}px "Atkinson Hyperlegible", sans-serif`;
+      ctx.fillStyle = n.dead ? NX.muted : INK;
+      ctx.font = `700 ${Math.min(15, 13 / scale)}px "JetBrains Mono", monospace`;
       ctx.fillText(n.label, n.x, n.y - 3);
-      ctx.font = `${Math.min(11, 9 / scale)}px "Atkinson Hyperlegible", sans-serif`;
-      ctx.fillStyle = n.dead ? "#b23a3a" : "#1f8a5a";
+      ctx.font = `${Math.min(11, 9 / scale)}px "JetBrains Mono", monospace`;
+      ctx.fillStyle = n.dead ? NX.warn : NX.ok;
       ctx.fillText(n.dead ? "REPLACED" : "LIVE", n.x, n.y + 11);
       if (n.dead) {
         ctx.strokeStyle = CORAL;
@@ -293,13 +294,13 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
   };
 
   return (
-    <div ref={wrapRef} data-testid="live-topology-canvas" className="absolute inset-0 select-none" style={{ background: "#0a141c" }}>
+    <div ref={wrapRef} data-testid="live-topology-canvas" className="absolute inset-0 select-none" style={{ background: "var(--nx-bg)" }}>
       <ForceGraph2D
         ref={fgRef as never}
         width={size.w}
         height={size.h}
         graphData={graph}
-        backgroundColor="#0a141c"
+        backgroundColor={NX.bg}
         nodeId="id"
         nodeCanvasObject={drawNode}
         nodeCanvasObjectMode={() => "replace"}

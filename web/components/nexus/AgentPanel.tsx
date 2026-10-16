@@ -17,6 +17,7 @@ import {
   type AgentRunResponse,
 } from "@/lib/nexus/api";
 import type { UseAgentStreamReturn } from "@/lib/nexus/useAgentStream";
+import { PixelZap } from "./PixelIcons";
 
 interface AgentPanelProps {
   tenant: string;
@@ -183,8 +184,8 @@ export function AgentPanel({
               </>
             ) : (
               <>
-                <span>⚡</span>
-                <span>Page Agents</span>
+                <PixelZap size={14} />
+                <span>PAGE AGENTS</span>
               </>
             )}
           </button>
@@ -379,8 +380,8 @@ export function AgentPanel({
                                 key={id}
                                 type="button"
                                 onClick={() => onHighlightEntities([id])}
-                                className="nx-chip cursor-pointer hover:bg-[#203a4b]"
-                                style={{ color: "var(--nx-lemon)", border: "1px solid var(--nx-line)" }}
+                                className="nx-chip cursor-pointer hover:bg-[var(--nx-line)]"
+                                style={{ color: "var(--nx-accent)", border: "1px solid var(--nx-line)" }}
                                 title="Click to highlight on Office Floor / Graph"
                               >
                                 {id}

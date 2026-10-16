@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { TopologyNode, AgentStepTrace } from "@/lib/nexus/api";
 import { buildRooms, RECORDS_ID, AGENT_POD_ID, str, type Room } from "@/lib/nexus/office";
 import { FLOORS, RECORDS_FLOOR, AGENT_FLOOR } from "@/lib/nexus/theme";
+import { SPRITE_SKIN, SPRITE_HAIR } from "@/lib/nexus/tokens";
 import { describeEvent, KIND_COLOR, type IngestEvent } from "@/lib/nexus/events";
 import type { TaskHandoffEvent } from "@/lib/nexus/useAgentStream";
 
@@ -32,25 +33,25 @@ const DESK_SLOT = 124;
 const DESK_ROW_H = 118;
 
 const C = {
-  ink: "#070c10",
-  cream: "#f6ebcb",
-  paper: "#f6efd6",
-  paperOld: "#c4bea6",
-  wall: "#3a4a58",
-  wallLine: "#2f3d49",
-  desk: "#8a5a3b",
-  deskTop: "#a56f48",
-  rack: "#3b4a57",
-  rackDark: "#26323c",
-  screen: "#0e4b55",
-  mint: "#6be3a5",
-  sky: "#5cc8f0",
-  lemon: "#ffd166",
-  coral: "#ff6b6b",
+  ink: "var(--nx-ink)",
+  cream: "var(--nx-text)",
+  paper: "var(--nx-panel-2)",
+  paperOld: "var(--nx-panel)",
+  wall: "var(--nx-panel)",
+  wallLine: "var(--nx-line)",
+  desk: "var(--nx-panel-2)",
+  deskTop: "var(--nx-line)",
+  rack: "var(--nx-panel-2)",
+  rackDark: "var(--nx-panel)",
+  screen: "var(--nx-ink)",
+  mint: "var(--nx-ok)",
+  sky: "var(--nx-info)",
+  lemon: "var(--nx-accent)",
+  coral: "var(--nx-bad)",
 };
 
-const SKIN = ["#f2c9a0", "#d9a577", "#b87d52", "#8a5a3b"];
-const HAIR = ["#2a1b14", "#5a3a22", "#c9a24a", "#9a4a2a", "#1b1f2a"];
+const SKIN = SPRITE_SKIN;
+const HAIR = SPRITE_HAIR;
 
 const clip = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 const hash = (s: string): number => {
@@ -125,28 +126,28 @@ function Sprite({ seed, shirt }: { seed: string; shirt: string }) {
 function RobotSprite({ seed, accent }: { seed: string; accent: string }) {
   const isScout = seed.includes("scout");
   const isPlanner = seed.includes("planner");
-  const eye = isScout ? C.sky : isPlanner ? C.lemon : C.mint;
-  const chassis = isScout ? "#0284c7" : isPlanner ? "#d97706" : "#059669";
-  const metal = "#475569";
-  const metalLight = "#94a3b8";
+  const eye = isScout ? "var(--nx-info)" : isPlanner ? "var(--nx-accent)" : "var(--nx-ok)";
+  const chassis = isScout ? "var(--nx-info)" : isPlanner ? "var(--nx-warn)" : "var(--nx-ok)";
+  const metal = "var(--nx-muted)";
+  const metalLight = "var(--nx-line)";
   const rows = [
     "..||||||..",
-    "..######..",
-    ".########.",
-    ".#EEEEEE#.",
-    ".#E#EE#E#.",
-    "..######..",
+    "..MMMMMM..",
+    ".MMMMMMMM.",
+    ".MEEEEEEM.",
+    ".MEMEEMEM.",
+    "..MMMMMM..",
     "..TTTTTT..",
     ".TTTTTTTT.",
-    "MTTTTTTTTM",
-    "MTTTTTTTTM",
+    "LTTTTTTTTL",
+    "LTTTTTTTTL",
   ];
   const fill: Record<string, string> = {
     "|": accent,
-    "#": metal,
+    M: metal,
     E: eye,
     T: chassis,
-    M: metalLight,
+    L: metalLight,
   };
   const px = 3;
   return (
@@ -544,7 +545,7 @@ export function OfficeFloor({
   });
 
   return (
-    <div ref={wrapRef} className="absolute inset-0 nx-scroll" data-testid="office-floor" style={{ background: "#0a141c" }}>
+    <div ref={wrapRef} className="absolute inset-0 nx-scroll" data-testid="office-floor" style={{ background: "var(--nx-bg)" }}>
       <style>{`
         .nx-hit { cursor: pointer; }
         .nx-hit:hover .nx-pick, .nx-hit:focus-visible .nx-pick { stroke: ${C.lemon}; stroke-width: 3; }
@@ -584,15 +585,15 @@ export function OfficeFloor({
             <g key={room.id} transform={`translate(${x}, ${y})`}>
               <rect x="-4" y="-4" width={ROOM_W + 8} height={h + 8} fill={C.ink} />
               <rect width={ROOM_W} height={h} fill={`url(#nx-floor-${floorIdx})`} />
-              <rect width={ROOM_W} height={WALL_H} fill={isAgentPod ? "#132337" : C.wall} />
+              <rect width={ROOM_W} height={WALL_H} fill={isAgentPod ? "var(--room-agents-floor)" : C.wall} />
               <rect y={WALL_H - 4} width={ROOM_W} height="4" fill={C.ink} />
-              <rect y={WALL_H} width={ROOM_W} height={h - WALL_H} fill={isAgentPod ? "#0284c7" : "#0a2a3a"} opacity={isAgentPod ? "0.15" : "0.1"} />
+              <rect y={WALL_H} width={ROOM_W} height={h - WALL_H} fill={isAgentPod ? "var(--room-agents)" : "var(--nx-panel-2)"} opacity={isAgentPod ? "0.15" : "0.08"} />
 
               <rect x="0" y="0" width="8" height={WALL_H - 4} fill={floor.accent} />
-              <text x="24" y="27" className="nx-t-display" fontSize="11" fill={isAgentPod ? "#38bdf8" : C.cream}>
+              <text x="24" y="27" className="nx-t-display" fontSize="11" fill={isAgentPod ? "var(--room-agents)" : C.cream}>
                 {clip(room.name.toUpperCase(), 36)}
               </text>
-              <text x={ROOM_W - 16} y="27" textAnchor="end" className="nx-t-ui" fontSize="14" fill={isAgentPod ? "#7dd3fc" : "#c4d2cf"}>
+              <text x={ROOM_W - 16} y="27" textAnchor="end" className="nx-t-ui" fontSize="14" fill={isAgentPod ? "var(--room-agents)" : "var(--nx-muted)"}>
                 {isAgentPod
                   ? "3 Autonomous Agents · FalkorDB Graph MCP"
                   : room.name.length > 26
@@ -627,26 +628,26 @@ export function OfficeFloor({
                     <title>{`${d.id}: ${summary}`}</title>
                     <rect x="3" y="4" width={BOARD_W} height={BOARD_H} fill={C.ink} opacity="0.3" />
                     <rect className="nx-pick" width={BOARD_W} height={BOARD_H} fill={dead ? C.paperOld : C.paper} stroke={C.ink} strokeWidth="2" />
-                    <circle cx={BOARD_W / 2} cy="0" r="4" fill={dead ? "#6f6a58" : C.coral} stroke={C.ink} strokeWidth="2" />
-                    <text x="10" y="22" className="nx-t-ui" fontSize="15" fontWeight="700" fill={dead ? "#6f6a58" : C.ink}>
+                    <circle cx={BOARD_W / 2} cy="0" r="4" fill={dead ? "var(--nx-muted)" : C.coral} stroke={C.ink} strokeWidth="2" />
+                    <text x="10" y="22" className="nx-t-ui" fontSize="15" fontWeight="700" fill={dead ? "var(--nx-muted)" : C.ink}>
                       {d.id}
                     </text>
                     {body.map((line, li) => (
-                      <text key={li} x="10" y={42 + li * 16} className="nx-t-ui" fontSize="13" fill={dead ? "#6f6a58" : "#2a2230"}>
+                      <text key={li} x="10" y={42 + li * 16} className="nx-t-ui" fontSize="13" fill={dead ? "var(--nx-muted)" : C.ink}>
                         {line}
                       </text>
                     ))}
                     {dead ? (
                       <>
                         <rect x="6" y="15" width={BOARD_W - 12} height="2" fill={C.coral} />
-                        <text x="10" y={BOARD_H - 9} className="nx-t-ui" fontSize="12" fontWeight="700" fill="#b23a3a">
+                        <text x="10" y={BOARD_H - 9} className="nx-t-ui" fontSize="12" fontWeight="700" fill="var(--nx-warn)">
                           {successor ? `Now ${successor}` : "Replaced"}
                         </text>
                       </>
                     ) : (
                       <>
-                        <rect x="10" y={BOARD_H - 20} width="38" height="14" fill="#1f8a5a" />
-                        <text x="29" y={BOARD_H - 9} textAnchor="middle" className="nx-t-ui" fontSize="11" fontWeight="700" fill="#fff">
+                        <rect x="10" y={BOARD_H - 20} width="38" height="14" fill="var(--nx-ok)" />
+                        <text x="29" y={BOARD_H - 9} textAnchor="middle" className="nx-t-ui" fontSize="11" fontWeight="700" fill="var(--nx-ink)">
                           LIVE
                         </text>
                       </>
@@ -696,7 +697,7 @@ export function OfficeFloor({
                           height="5"
                           fill={r === 0 && down ? C.coral : C.mint}
                         />
-                        <rect x="20" y={9 + r * 15} width="30" height="3" fill="#4f6270" />
+                        <rect x="20" y={9 + r * 15} width="30" height="3" fill="var(--nx-line)" />
                       </g>
                     ))}
                     {down && (
@@ -731,8 +732,8 @@ export function OfficeFloor({
                 const lit = hl.has(p.id);
                 const hovered = hover === p.id;
                 let bubble: { lines: string[]; fill: string } | null = null;
-                if (act) bubble = { lines: wrap(act.label, 16, 2), fill: act.alert ? "#ffc9c4" : "#a9ddf5" };
-                else if (hovered && note) bubble = { lines: [note.verb, clip(note.target, 18)], fill: note.kind === "own" ? "#a9ddf5" : "#b6f0cf" };
+                if (act) bubble = { lines: wrap(act.label, 16, 2), fill: act.alert ? "var(--nx-bad)" : "var(--nx-info)" };
+                else if (hovered && note) bubble = { lines: [note.verb, clip(note.target, 18)], fill: note.kind === "own" ? "var(--nx-info)" : "var(--nx-ok)" };
                 return (
                   <g
                     key={p.id}
@@ -750,7 +751,7 @@ export function OfficeFloor({
                     <title>{`${fullName}${role ? ` · ${role}` : ""}`}</title>
                     <circle className="nx-light" cx="54" cy="56" r="48" fill={C.sky} opacity="0.1" />
                     {act && <circle key={`glow-${act.seq}`} className="nx-glow" cx="54" cy="52" r="46" fill={floor.accent} />}
-                    <rect x="38" y="20" width="32" height="12" fill="#26323c" stroke={C.ink} strokeWidth="2" />
+                    <rect x="38" y="20" width="32" height="12" fill="var(--nx-panel)" stroke={C.ink} strokeWidth="2" />
                     <g transform="translate(39, 6)" className={lit ? "nx-bob" : undefined}>
                       <g className="nx-enter" style={{ ["--fx" as string]: `${doorX}px`, ["--fy" as string]: `${doorY}px`, ["--dur" as string]: `${walk}s`, ["--delay" as string]: `${delay}s` }}>
                         <g className="nx-stride" style={{ ["--bobs" as string]: Math.round(walk / 0.34), ["--delay" as string]: `${delay}s` }}>
@@ -766,10 +767,10 @@ export function OfficeFloor({
                     </g>
                     <g shapeRendering="crispEdges">
                       <rect x="2" y="38" width="104" height="38" fill={C.ink} />
-                      <rect className="nx-pick" x="4" y="40" width="100" height="34" fill={p.properties?.is_agent ? "#1e293b" : C.desk} />
-                      <rect x="4" y="40" width="100" height="6" fill={p.properties?.is_agent ? "#334155" : C.deskTop} />
+                      <rect className="nx-pick" x="4" y="40" width="100" height="34" fill={p.properties?.is_agent ? "var(--room-agents-floor)" : C.desk} />
+                      <rect x="4" y="40" width="100" height="6" fill={p.properties?.is_agent ? "var(--nx-line)" : C.deskTop} />
                       <rect x="40" y="42" width="28" height="20" fill={C.ink} />
-                      <rect x="42" y="44" width="24" height="14" fill={p.properties?.is_agent ? "#032830" : C.screen} />
+                      <rect x="42" y="44" width="24" height="14" fill={p.properties?.is_agent ? "var(--nx-ink)" : C.screen} />
                       <svg x="42" y="44" width="24" height="14" overflow="hidden">
                         <g className="nx-scr" style={{ animationDelay: `-${(hash(p.id) % 24) / 10}s` }}>
                           {[2, 6, 10, 16, 20, 24].map((yy, n) => (
@@ -779,21 +780,21 @@ export function OfficeFloor({
                               y={yy}
                               width={8 + ((hash(p.id) + n * 5) % 4) * 3}
                               height="2"
-                              fill={p.properties?.is_agent ? (n % 2 ? "#38bdf8" : "#4ade80") : (n % 2 ? C.sky : C.mint)}
+                              fill={p.properties?.is_agent ? (n % 2 ? "var(--nx-info)" : "var(--nx-ok)") : (n % 2 ? C.sky : C.mint)}
                             />
                           ))}
                         </g>
-                        <rect className="nx-cursor" x="3" y="10" width="3" height="2" fill={p.properties?.is_agent ? "#38bdf8" : "#fff"} />
+                        <rect className="nx-cursor" x="3" y="10" width="3" height="2" fill={p.properties?.is_agent ? "var(--nx-info)" : "var(--nx-text)"} />
                       </svg>
-                      <rect x="42" y="66" width="24" height="5" fill={p.properties?.is_agent ? "#0284c7" : "#d8cfae"} />
+                      <rect x="42" y="66" width="24" height="5" fill={p.properties?.is_agent ? "var(--nx-info)" : "var(--nx-line)"} />
                     </g>
                     <rect
                       x="4"
                       y="82"
                       width="100"
                       height="22"
-                      fill={p.properties?.is_agent ? "#0b1928" : C.cream}
-                      stroke={p.properties?.is_agent ? "#38bdf8" : C.ink}
+                      fill={p.properties?.is_agent ? "var(--nx-panel-2)" : C.cream}
+                      stroke={p.properties?.is_agent ? "var(--nx-info)" : C.ink}
                       strokeWidth="2"
                     />
                     <text
@@ -803,7 +804,7 @@ export function OfficeFloor({
                       className="nx-t-ui"
                       fontSize="14"
                       fontWeight="700"
-                      fill={p.properties?.is_agent ? "#38bdf8" : C.ink}
+                      fill={p.properties?.is_agent ? "var(--nx-info)" : C.ink}
                     >
                       {clip(fullName, 13)}
                     </text>

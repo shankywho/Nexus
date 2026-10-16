@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { startSync, cancelSync, getSyncStatus, SyncStatus } from "@/lib/nexus/api";
+import { PixelPlay } from "./PixelIcons";
 
 export interface SimulateSyncButtonProps {
   onSyncCompleted?: () => void;
@@ -50,22 +51,44 @@ export function SimulateSyncButton({ onSyncCompleted }: SimulateSyncButtonProps)
   };
 
   const running = status.state === "running";
+  const progressPercent = status.total > 0 ? Math.min(100, Math.round((status.processed / status.total) * 100)) : 0;
   const label = running
-    ? `Stop sync · ${status.processed}/${status.total || "?"}`
+    ? `STOP ${status.processed}/${status.total || "?"}`
     : status.state === "completed"
-      ? `Replay sync · ${status.processed}/${status.total} done`
-      : "Replay company sync";
+      ? `REPLAY SYNC · ${status.processed}/${status.total}`
+      : "REPLAY SYNC";
 
   return (
     <div className="flex items-center gap-2">
       {error && (
-        <span role="alert" className="nx-mono" style={{ color: "var(--nx-coral)" }} title={error}>
-          {error.slice(0, 36)}
+        <span role="alert" className="nx-mono text-xs" style={{ color: "var(--nx-bad)" }} title={error}>
+          {error.slice(0, 32)}
         </span>
       )}
-      <button type="button" data-testid="simulate-sync-button" className={`nx-btn ${running ? "is-warn" : ""}`} onClick={toggle} disabled={loading}>
-        <span className={`nx-dot ${running ? "is-busy nx-blink" : ""}`} />
-        {label}
+      <button
+        type="button"
+        data-testid="simulate-sync-button"
+        className={`nx-btn ${running ? "is-warn" : "nx-btn--primary"}`}
+        style={{ position: "relative", overflow: "hidden" }}
+        onClick={toggle}
+        disabled={loading}
+      >
+        {running && (
+          <span
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: `${progressPercent}%`,
+              background: "rgba(0,0,0,0.2)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+        {!running && <PixelPlay size={12} />}
+        {running && <span className="nx-dot is-busy nx-blink" />}
+        <span style={{ position: "relative", zIndex: 1 }}>{label}</span>
       </button>
     </div>
   );

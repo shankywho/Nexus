@@ -56,7 +56,7 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
         <label className="sr-only" htmlFor="nx-examples">Example questions</label>
         <select
           id="nx-examples"
-          className="nx-input"
+          className="nx-input w-full"
           value=""
           onChange={(e) => {
             if (!e.target.value) return;
@@ -74,17 +74,17 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
       </div>
 
       <div className="nx-scroll flex-1 min-h-0 flex flex-col gap-3 pr-1" aria-live="polite">
-        {loading && !response && <p style={{ color: "var(--nx-dim)" }}>Searching the graph…</p>}
+        {loading && !response && <p className="nx-mono text-xs" style={{ color: "var(--nx-muted)" }}>Searching the graph…</p>}
         {error && (
-          <p role="alert" style={{ color: "var(--nx-coral)" }}>
+          <p role="alert" className="nx-mono text-xs" style={{ color: "var(--nx-bad)" }}>
             {error}
           </p>
         )}
         {response && (
           <>
-            <div className="p-3" style={{ background: "var(--nx-ink)", boxShadow: "inset 0 0 0 2px var(--nx-line)" }}>
+            <div className="p-3" style={{ background: "var(--nx-panel-2)", border: "var(--bd)" }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="nx-display" style={{ color: "var(--nx-mint)" }}>Answer</span>
+                <span className="nx-display text-xs" style={{ color: "var(--nx-ok)" }}>Answer</span>
                 <span className="flex gap-2">
                   <span className="nx-chip" title={response.model ?? undefined}>
                     {response.mode === "claude" ? "Claude" : response.mode === "openai" ? "OpenAI" : "offline"}
@@ -95,7 +95,7 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
                   </span>
                 </span>
               </div>
-              <p style={{ fontSize: 16, lineHeight: "23px" }}>{response.answer}</p>
+              <p className="nx-mono" style={{ fontSize: 13, lineHeight: "20px", color: "var(--nx-text)" }}>{response.answer}</p>
             </div>
             <ProvenanceBadge
               currentSource={response.current_sources[0]}
@@ -104,11 +104,16 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
             />
             {history.length > 1 && (
               <div>
-                <p className="nx-display" style={{ color: "var(--nx-dim)", marginBottom: 6 }}>Earlier questions</p>
+                <p className="nx-display text-xs" style={{ color: "var(--nx-muted)", marginBottom: 6 }}>Earlier questions</p>
                 <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
                   {history.slice(1).map((h) => (
                     <li key={h}>
-                      <button type="button" onClick={() => { setQuestion(h); ask(h); }} style={{ background: "none", border: 0, color: "var(--nx-sky)", cursor: "pointer", padding: "2px 0", font: "inherit", textAlign: "left" }}>
+                      <button
+                        type="button"
+                        onClick={() => { setQuestion(h); ask(h); }}
+                        className="nx-mono text-xs hover:underline"
+                        style={{ background: "none", border: 0, color: "var(--nx-info)", cursor: "pointer", padding: "2px 0", textAlign: "left" }}
+                      >
                         {h}
                       </button>
                     </li>
@@ -118,10 +123,10 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
             )}
             {response.cypher_queries?.length > 0 && (
               <details>
-                <summary className="nx-mono" style={{ cursor: "pointer", color: "var(--nx-sky)" }}>
+                <summary className="nx-mono text-xs" style={{ cursor: "pointer", color: "var(--nx-info)" }}>
                   Cypher used
                 </summary>
-                <pre className="nx-mono nx-scroll mt-2 p-2" style={{ background: "var(--nx-ink)", fontSize: 16, whiteSpace: "pre-wrap" }}>
+                <pre className="nx-mono nx-scroll mt-2 p-2 text-xs" style={{ background: "var(--nx-ink)", border: "1px solid var(--nx-line)", color: "var(--nx-info)", whiteSpace: "pre-wrap" }}>
                   {response.cypher_queries[0]}
                 </pre>
               </details>
@@ -140,7 +145,7 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
         <label className="sr-only" htmlFor="nx-ask">Ask the company brain</label>
         <input
           id="nx-ask"
-          className="nx-input"
+          className="nx-input flex-1"
           data-testid="ask-input"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}

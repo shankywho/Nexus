@@ -1,10 +1,9 @@
-/** One floor tone per team so rooms and graph islands share a colour. */
+/** Dark tinted tiles + bright stripe tokens from §1 for each team room */
 export const FLOORS = [
-  { base: "#cdaa72", line: "#b8955d", accent: "#6be3a5" },
-  { base: "#93b8a4", line: "#7ea28e", accent: "#5cc8f0" },
-  { base: "#8fa9c9", line: "#7992b2", accent: "#ffd166" },
-  { base: "#b9a1c9", line: "#a28ab3", accent: "#ffa07a" },
+  { base: "var(--room-payments-floor, #2e2a20)", line: "rgba(255,255,255,0.045)", accent: "var(--room-payments, #e0b866)" },
+  { base: "var(--room-platform-floor, #1f2c27)", line: "rgba(255,255,255,0.045)", accent: "var(--room-platform, #7ec4a0)" },
+  { base: "var(--room-growth-floor, #212838)", line: "rgba(255,255,255,0.045)", accent: "var(--room-growth, #93a6e6)" },
+  { base: "var(--room-sre-floor, #2b2331)", line: "rgba(255,255,255,0.045)", accent: "var(--room-sre, #c79be0)" },
 ];
-export const RECORDS_FLOOR = { base: "#c9c3ad", line: "#b3ad97", accent: "#ffd166" };
-export const AGENT_FLOOR = { base: "#172535", line: "#0f1b27", accent: "#38bdf8" };
-
+export const RECORDS_FLOOR = { base: "#1e242d", line: "rgba(255,255,255,0.045)", accent: "var(--nx-accent, #f2c94c)" };
+export const AGENT_FLOOR = { base: "var(--room-agents-floor, #18212f)", line: "rgba(255,255,255,0.045)", accent: "var(--room-agents, #6cb6ff)" };

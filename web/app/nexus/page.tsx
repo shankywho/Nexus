@@ -11,6 +11,7 @@ import { AskPanel } from "@/components/nexus/AskPanel";
 import { AgentPanel } from "@/components/nexus/AgentPanel";
 import { NodeInspector } from "@/components/nexus/NodeInspector";
 import { SimulateSyncButton } from "@/components/nexus/SimulateSyncButton";
+import { PixelRobot, PixelLightbulb } from "@/components/nexus/PixelIcons";
 import { useIngestStream } from "@/lib/nexus/useIngestStream";
 import { useAgentStream } from "@/lib/nexus/useAgentStream";
 
@@ -222,7 +223,8 @@ export default function NexusDashboard() {
                 aria-pressed={sidebarTab === "agents"}
                 data-testid="tab-sidebar-agents"
               >
-                🤖 Agent Pod
+                <PixelRobot size={14} />
+                <span>AGENT POD</span>
               </button>
               <button
                 type="button"
@@ -231,7 +233,8 @@ export default function NexusDashboard() {
                 aria-pressed={sidebarTab === "ask"}
                 data-testid="tab-sidebar-ask"
               >
-                💡 Ask Brain
+                <PixelLightbulb size={14} />
+                <span>ASK BRAIN</span>
               </button>
             </div>
             {sidebarTab === "agents" ? (

@@ -1,144 +1,224 @@
-/* NEXUS office theme. Pixel-grid UI inspired by the design language of
-   HarnessMD/munder-difflin (MIT): chunky layered borders, flat color, three
-   pixel typefaces. Night-shift palette: blue-green chrome around a warm floor. */
+/* NEXUS pixel-office design system */
 
 .nx {
-  --nx-bg: #0c1720;
-  --nx-panel: #13242f;
-  --nx-panel-2: #1a3140;
-  --nx-line: #2f5568;
-  --nx-ink: #070c10;
-  --nx-cream: #f6ebcb;
-  --nx-dim: #9fb3b0;
-  --nx-mint: #6be3a5;
-  --nx-sky: #5cc8f0;
-  --nx-blue: #6c8ef5;
-  --nx-lemon: #ffd166;
-  --nx-coral: #ff6b6b;
-  --nx-display: "Press Start 2P", monospace;
-  --nx-ui: "Atkinson Hyperlegible", system-ui, sans-serif;
-  --nx-mono: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
-
   position: fixed;
   inset: 0;
   background: var(--nx-bg);
-  color: var(--nx-cream);
-  font-family: var(--nx-ui);
-  font-size: 15px;
-  line-height: 1.35;
+  color: var(--nx-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
-.nx *,
-.nx *::before,
-.nx *::after {
+.nx * {
+  border-radius: 0 !important;
   box-sizing: border-box;
-  letter-spacing: 0;
 }
 
-.nx-display {
+/* Typography mappings: Silkscreen for display/titles/buttons, JetBrains Mono for everything else */
+.nx-display,
+.nx-title,
+.nx-t-display {
+  font-family: var(--font-pixel) !important;
   text-transform: uppercase;
-  font-family: var(--nx-display);
-  font-size: 10px;
-  line-height: 16px;
-  font-weight: 400;
-}
-.nx-mono {
-  font-family: var(--nx-mono);
-  font-size: 14px;
-  line-height: 20px;
+  letter-spacing: 0.06em;
 }
 
-/* Layered pixel panel: ink / line / ink */
+.nx-mono,
+.nx-t-mono,
+.nx-t-ui {
+  font-family: var(--font-mono) !important;
+}
+
+/* Three top-level panels get --ring. Everything inside uses a single --bd */
 .nx-panel {
   position: relative;
   background: var(--nx-panel);
-  box-shadow:
-    0 0 0 2px var(--nx-ink),
-    0 0 0 4px var(--nx-line),
-    0 0 0 6px var(--nx-ink);
-  margin: 6px;
+  box-shadow: var(--ring);
 }
+
 .nx-panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 28px;
-  padding: 6px 10px;
-  background: var(--nx-panel-2);
-  border-bottom: 2px solid var(--nx-ink);
-  color: var(--nx-cream);
+  gap: var(--s2);
+  height: 44px;
+  min-height: 44px;
+  padding: 0 var(--s3);
+  background: var(--nx-panel);
+  border-bottom: var(--bd);
+  color: var(--nx-text);
+  font-family: var(--font-pixel);
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
+/* Buttons (§7) */
 .nx-btn {
+  height: 32px;
+  padding: 0 12px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--nx-panel-2);
+  border: var(--bd);
+  box-shadow: 0 2px 0 var(--nx-ink);
+  color: var(--nx-text);
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  font: inherit;
-  color: var(--nx-cream);
-  background: var(--nx-panel-2);
-  border: 2px solid var(--nx-ink);
-  box-shadow: inset 0 0 0 2px var(--nx-line), 0 4px 0 var(--nx-ink);
-  cursor: pointer;
+  justify-content: center;
+  gap: var(--s2);
   transition: none;
+  user-select: none;
+  white-space: nowrap;
 }
-.nx-btn:hover:not(:disabled) { background: #22404f; color: #fff; }
-.nx-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: inset 0 0 0 2px var(--nx-line), 0 0 0 var(--nx-ink); }
-.nx-btn:disabled { opacity: 0.55; cursor: default; }
+
+.nx-btn:hover:not(:disabled) {
+  background: #232e3d;
+  color: #fff;
+}
+
+.nx-btn:active:not(:disabled),
 .nx-btn[aria-pressed="true"],
 .nx-btn.is-on {
-  background: var(--nx-mint);
+  transform: translateY(2px);
+  box-shadow: none;
+  background: var(--nx-ok);
   color: var(--nx-ink);
-  box-shadow: inset 0 0 0 2px #2f9c6c, 0 4px 0 var(--nx-ink);
 }
-.nx-btn.is-warn { background: var(--nx-lemon); color: var(--nx-ink); box-shadow: inset 0 0 0 2px #c79a2c, 0 4px 0 var(--nx-ink); }
 
-.nx :focus-visible { outline: 2px solid var(--nx-lemon); outline-offset: 2px; }
+.nx-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
+.nx-btn--primary,
+.nx-btn.is-primary {
+  background: var(--nx-accent);
+  color: var(--nx-ink);
+  border-color: var(--nx-ink);
+  box-shadow: 0 2px 0 var(--nx-ink);
+}
+.nx-btn--primary:hover:not(:disabled),
+.nx-btn.is-primary:hover:not(:disabled) {
+  background: #ffd86b;
+  color: var(--nx-ink);
+}
+
+.nx-btn--warn,
+.nx-btn.is-warn {
+  background: var(--nx-warn);
+  color: var(--nx-ink);
+  border-color: var(--nx-ink);
+  box-shadow: 0 2px 0 var(--nx-ink);
+}
+.nx-btn--warn:hover:not(:disabled),
+.nx-btn.is-warn:hover:not(:disabled) {
+  background: #ffb573;
+  color: var(--nx-ink);
+}
+
+/* Segmented control: shared borders */
+.nx-seg {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nx-seg .nx-btn + .nx-btn {
+  margin-left: -2px;
+}
+
+/* Chips (§7) */
 .nx-chip {
+  height: 24px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 8px;
-  border: 2px solid var(--nx-ink);
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   background: var(--nx-panel-2);
-  box-shadow: inset 0 0 0 1px var(--nx-line);
-  font-family: var(--nx-mono);
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--nx-cream);
+  border: 1px solid var(--nx-line);
+  color: var(--nx-text);
   white-space: nowrap;
 }
-.nx-dot { width: 8px; height: 8px; background: var(--nx-mint); box-shadow: 0 0 0 2px var(--nx-ink); }
-.nx-dot.is-bad { background: var(--nx-coral); }
-.nx-dot.is-busy { background: var(--nx-lemon); }
 
-.nx-input {
-  width: 100%;
-  padding: 6px 8px;
-  font: inherit;
-  color: var(--nx-cream);
-  background: var(--nx-ink);
-  border: 2px solid var(--nx-line);
+.nx-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--nx-ok);
+  box-shadow: 0 0 0 1px var(--nx-ink);
+  flex-shrink: 0;
 }
-.nx-input::placeholder { color: #5e7a84; }
+.nx-dot.is-bad { background: var(--nx-bad); }
+.nx-dot.is-busy { background: var(--nx-warn); }
+.nx-dot.is-muted { background: var(--nx-muted); }
 
-.nx-scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--nx-line) var(--nx-ink); }
+/* Inputs and Selects (§7) */
+.nx-input,
+input.nx-input,
+select.nx-input {
+  height: 36px;
+  padding: 0 var(--s2);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--nx-panel-2);
+  border: var(--bd);
+  color: var(--nx-text);
+  outline: none;
+}
+.nx-input::placeholder {
+  color: var(--nx-faint);
+}
 
-@keyframes nx-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+select.nx-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'%3E%3Cpath d='M0 0h8L4 6z' fill='%237f8da0'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+/* Focus styles (§7) */
+.nx :focus-visible {
+  outline: 2px solid var(--nx-info) !important;
+  outline-offset: 2px !important;
+}
+
+/* Scrollbars */
+.nx-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nx-line) var(--nx-ink);
+}
+.nx-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.nx-scroll::-webkit-scrollbar-track {
+  background: var(--nx-ink);
+}
+.nx-scroll::-webkit-scrollbar-thumb {
+  background: var(--nx-line);
+}
+
+/* Pixel animations */
 @keyframes nx-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
-@keyframes nx-ring { 0% { opacity: 0.9; } 100% { opacity: 0; } }
-.nx-bob { animation: nx-bob 1.2s steps(2, end) infinite; }
+@keyframes nx-flash {
+  0% { background: var(--nx-warn); color: var(--nx-ink); }
+  50% { background: var(--nx-panel-2); color: var(--nx-warn); }
+  100% { background: var(--nx-panel-2); color: var(--nx-warn); }
+}
 .nx-blink { animation: nx-blink 1s steps(2, end) infinite; }
-.nx-ring { animation: nx-ring 1.4s steps(4, end) infinite; }
+.nx-flash { animation: nx-flash 0.4s steps(8, end) 1; }
 
-/* ---- office floor motion ----
-   Timings follow the office scene of Munder Difflin (MIT): a walk in from the door, 0.6 s work pulse,
-   0.53 s cursor blink, 2.5 Hz alert, and a stamped, stepped feel. Everything is stepped, never eased,
-   to stay on the pixel grid. */
 @keyframes nx-enter {
   from { transform: translate(var(--fx), var(--fy)); opacity: 0; }
   6% { opacity: 1; }
@@ -147,8 +227,6 @@
 .nx-enter { animation: nx-enter var(--dur, 1.6s) steps(28, end) var(--delay, 0s) backwards; }
 @keyframes nx-stride { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 .nx-stride { animation: nx-stride 0.34s steps(2, end) var(--delay, 0s) var(--bobs, 4); }
-@keyframes nx-glow { 0%, 100% { opacity: 0.18; transform: scale(0.95); } 50% { opacity: 0.45; transform: scale(1.1); } }
-.nx-glow { transform-box: fill-box; transform-origin: center; animation: nx-glow 0.6s ease-in-out 4; mix-blend-mode: screen; pointer-events: none; }
 @keyframes nx-hop { 0% { transform: translateY(0); } 18% { transform: translateY(-5px); } 36% { transform: translateY(0); } 54% { transform: translateY(-3px); } 72%, 100% { transform: translateY(0); } }
 .nx-hop { animation: nx-hop 0.9s steps(6, end) 1; }
 @keyframes nx-scr { from { transform: translateY(0); } to { transform: translateY(-14px); } }
@@ -159,36 +237,12 @@
 .nx-bubble-life { animation: nx-bubble-life 2.4s steps(14, end) both; }
 @keyframes nx-alert { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
 .nx-alert { animation: nx-alert 0.4s steps(2, end) infinite; }
-@keyframes nx-ringout { from { transform: scale(1); opacity: 0.9; } to { transform: scale(4.6); opacity: 0; } }
-.nx-ringout { transform-box: fill-box; transform-origin: center; animation: nx-ringout 0.9s steps(6, end) 3 both; pointer-events: none; }
 @keyframes nx-slam { 0% { transform: scale(1.3) rotate(-3deg); } 30% { transform: scale(0.94); } 55% { transform: scale(1.04) translateX(3px); } 75% { transform: translateX(-3px); } 100% { transform: scale(1); } }
 .nx-slam { animation: nx-slam 0.7s steps(8, end) 1; }
 @keyframes nx-pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
 .nx-pop { animation: nx-pop 0.5s steps(5, end) 1; }
-@keyframes nx-confetti { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(var(--tx), var(--ty)); opacity: 0; } }
-.nx-confetti { animation: nx-confetti 1.2s steps(10, end) 1 both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .nx-bob, .nx-blink, .nx-ring, .nx-enter, .nx-stride, .nx-glow, .nx-hop, .nx-scr, .nx-cursor,
-  .nx-bubble-life, .nx-alert, .nx-ringout, .nx-slam, .nx-pop, .nx-confetti { animation: none; }
-  .nx-confetti { display: none; }
+  .nx-blink, .nx-flash, .nx-enter, .nx-stride, .nx-hop, .nx-scr, .nx-cursor,
+  .nx-bubble-life, .nx-alert, .nx-slam, .nx-pop { animation: none !important; }
 }
-
-@layer base {
-/* upstream globals.css forces JetBrains Mono on every element with !important;
-   these rules out-rank it inside the office theme. */
-.nx *:not(.codicon) { font-family: var(--nx-ui) !important; }
-.nx *.nx-display:not(.codicon),
-.nx *.nx-t-display:not(.codicon) { font-family: var(--nx-display) !important; }
-.nx *.nx-mono:not(.codicon),
-.nx *.nx-t-mono:not(.codicon),
-.nx *.nx-chip:not(.codicon),
-.nx code:not(.codicon),
-.nx pre:not(.codicon) { font-family: var(--nx-mono) !important; }
-.nx *.nx-t-ui:not(.codicon) { font-family: var(--nx-ui) !important; }
-.nx .nx-mono *:not(.codicon),
-.nx .nx-chip *:not(.codicon) { font-family: inherit !important; }
-.nx .nx-display *:not(.codicon) { font-family: inherit !important; }
-}
-
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
