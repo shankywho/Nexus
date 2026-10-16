@@ -50,6 +50,15 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 - **Interactive Audit Highlighting (`.nx-audit-pulse`):** Wired audit runs (`OWNERS`, `TRACE`, `STALE`, `BUS FACTOR`) to highlight matching desks, racks, and decision notes on the floor with a pulsing `--nx-info` glow (`.nx-audit-pulse`), while automatically dimming unselected elements to 35% opacity. Supports toggling active audit or pressing `Esc` to clear.
 - **Deliverables:** Built cleanly (`npm run lint && npm run build`), validated real-time note flip to amber during live replay sync, and saved screenshots to `docs/img/ui/phase-5-1440x900.png` and `docs/img/ui/phase-5-1920x1080.png`.
 
+### Phase 6: Side Panel Polish (Tabs, Pixel Icons, Non-Empty Standby State & Ledger Drawer)
+- **Zero-Emoji Compliance in Side Panels:** Replaced residual emoji in `AgentPanel`, `AskPanel`, and `ProvenanceBadge` with SVG pixelart icons (`PixelRobot`, `PixelZap`, `PixelPlay`, `PixelClose`, `PixelInfo`).
+- **Non-Empty Agent Standby State:** Replaced sparse placeholder text with a compact 140px standby banner featuring a centered pixel robot sprite and helpful call-to-action ("Pod on standby. Pick an incident and page the agents."). Below it, rendered 3 dedicated agent role cards (`SCOUT` Graph Crawler, `PLANNER` Playbook Engine, `SCRIBE` Memory Ingestion) so the panel is never empty (>40% void) on cold start.
+- **Incident Dispatch Layout:** Sized the incident `<select>` and `⚡ PAGE AGENTS` button to match 36px height with unified `.nx-btn--warn` styling, eliminating height and border mismatches.
+- **Ask Brain Preset Question Chips & Provenance Badges:** Added 4 preset clickable question chips ("Who owns the payments ledger?", "What was decided about auth tokens?", "What happens if Kabir is on leave?", "Trace fraud scoring dependencies") above the ask input. Rendered answers in a mono card with `✓ CURRENT` (mint dot) and `✗ SUPERSEDED` (amber dot with strike-through source label) status chips.
+- **Decision Ledger Drawer:** Maintained a 240px persistent drawer at the bottom of the side panel collapsible to 36px via pixel chevron (`PixelChevronDown` / `PixelChevronUp`), displaying real-time `LIVE` (mint) or `REPLACED` (amber) status chips with clickable row interaction to highlight corresponding whiteboard notes.
+- **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified no panel area >40% empty on cold start, and saved screenshots to `docs/img/ui/phase-6-1440x900.png` and `docs/img/ui/phase-6-1920x1080.png`.
+
+
 
 
 

@@ -29,21 +29,23 @@ export function ProvenanceBadge({ currentSource, supersededSource, decisionId, r
         <span className="nx-display">Provenance{decisionId ? ` · ${decisionId}` : ""}</span>
       </header>
       <div className="p-3 flex flex-col gap-3">
-        <div className="flex gap-3 items-start">
-          <span className="nx-chip" style={{ background: "var(--nx-ok)", color: "var(--nx-ink)", fontWeight: 700 }}>
+        <div className="flex gap-2.5 items-start">
+          <span className="nx-chip" style={{ background: "var(--nx-ok)", color: "var(--nx-ink)", fontWeight: 700, height: 22, padding: "0 6px" }}>
+            <span className="nx-dot" style={{ background: "var(--nx-ink)", width: 6, height: 6 }} />
             CURRENT
           </span>
-          <span className="nx-mono" style={{ fontSize: 13, lineHeight: "20px", color: "var(--nx-text)" }}>
+          <span className="nx-mono text-xs flex-1" style={{ lineHeight: "18px", color: "var(--nx-text)" }}>
             {current ?? "No current source found"}
           </span>
         </div>
-        <div className="flex gap-3 items-start">
-          <span className="nx-chip" style={{ background: "var(--nx-warn)", color: "var(--nx-ink)", fontWeight: 700 }}>
+        <div className="flex gap-2.5 items-start">
+          <span className="nx-chip" style={{ background: "var(--nx-warn)", color: "var(--nx-ink)", fontWeight: 700, height: 22, padding: "0 6px" }}>
+            <span className="nx-dot" style={{ background: "var(--nx-ink)", width: 6, height: 6 }} />
             SUPERSEDED
           </span>
           <span
-            className="nx-mono"
-            style={{ fontSize: 13, lineHeight: "20px", color: "var(--nx-muted)", textDecoration: "line-through" }}
+            className="nx-mono text-xs flex-1"
+            style={{ lineHeight: "18px", color: "var(--nx-muted)", textDecoration: "line-through" }}
           >
             {old ?? "Nothing superseded"}
           </span>

@@ -9,10 +9,10 @@ export interface AskPanelProps {
 }
 
 const SAMPLES = [
-  { label: "Where are sessions stored?", question: "Where do we store user sessions?" },
-  { label: "Who maintains session-store?", question: "Who maintains the session-store service?" },
-  { label: "What caused INC-77?", question: "What caused incident INC-77?" },
-  { label: "What was replaced?", question: "What decisions were superseded?" },
+  { label: "Session Store", question: "Where do we store user sessions?" },
+  { label: "Who Owns What", question: "Who maintains the session-store service?" },
+  { label: "Root Cause INC-77", question: "What caused incident INC-77?" },
+  { label: "Superseded Decisions", question: "What decisions were superseded?" },
 ];
 
 export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
@@ -20,7 +20,6 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<AskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
 
   const ask = useCallback(
     async (q: string) => {
@@ -31,7 +30,6 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
       try {
         const res = await askNexus(text);
         setResponse(res);
-        setHistory((h) => [text, ...h.filter((x) => x !== text)].slice(0, 5));
         onQuestionAnswered?.(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "The API did not answer. Check that it is running on port 8000.");
@@ -39,94 +37,140 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
         setLoading(false);
       }
     },
-    [onQuestionAnswered],
+    [onQuestionAnswered]
   );
 
   useEffect(() => {
     ask(SAMPLES[0].question);
-    // run once on mount so the panel opens with a real answer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const decisionId = response?.answer.match(/\bDEC-\d+\b/)?.[0];
 
   return (
-    <div data-testid="ask-panel" className="h-full flex flex-col gap-3 p-3 min-h-0">
-      <div>
-        <label className="sr-only" htmlFor="nx-examples">Example questions</label>
-        <select
-          id="nx-examples"
-          className="nx-input w-full"
-          value=""
-          onChange={(e) => {
-            if (!e.target.value) return;
-            setQuestion(e.target.value);
-            ask(e.target.value);
-          }}
-        >
-          <option value="">Try an example question…</option>
-          {SAMPLES.map((q) => (
-            <option key={q.label} value={q.question}>
-              {q.label}
-            </option>
-          ))}
-        </select>
+    <div data-testid="ask-panel" className="h-full flex flex-col gap-2.5 p-3 min-h-0">
+      {/* 3–4 Preset Question Chips Above Input */}
+      <div className="flex flex-wrap gap-1.5 shrink-0" role="group" aria-label="Example Questions">
+        {SAMPLES.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            className="nx-chip cursor-pointer nx-hover text-[11px]"
+            style={{
+              height: 24,
+              padding: "0 8px",
+              background: question === s.question ? "var(--nx-panel-2)" : "var(--nx-panel)",
+              borderColor: question === s.question ? "var(--nx-accent)" : "var(--nx-line)",
+              color: question === s.question ? "var(--nx-accent)" : "var(--nx-text)",
+            }}
+            onClick={() => {
+              setQuestion(s.question);
+              ask(s.question);
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
+      {/* Question Input Form */}
+      <form
+        className="flex gap-2 shrink-0"
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(question);
+        }}
+      >
+        <label className="sr-only" htmlFor="nx-ask">
+          Ask the company brain
+        </label>
+        <input
+          id="nx-ask"
+          className="nx-input nx-mono flex-1 text-xs"
+          style={{ height: 36, padding: "0 10px" }}
+          data-testid="ask-input"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Ask anything about systems, owners, or decisions..."
+        />
+        <button
+          type="submit"
+          className="nx-btn nx-btn--primary text-xs"
+          style={{ height: 36, padding: "0 14px" }}
+          data-testid="ask-submit"
+          disabled={loading || !question.trim()}
+        >
+          {loading ? "SEARCHING..." : "ASK"}
+        </button>
+      </form>
+
+      {/* Answer Area (Scrolls) */}
       <div className="nx-scroll flex-1 min-h-0 flex flex-col gap-3 pr-1" aria-live="polite">
-        {loading && !response && <p className="nx-mono text-xs" style={{ color: "var(--nx-muted)" }}>Searching the graph…</p>}
+        {loading && !response && (
+          <p className="nx-mono text-xs p-3 text-center" style={{ color: "var(--nx-muted)" }}>
+            Searching the graph…
+          </p>
+        )}
         {error && (
-          <p role="alert" className="nx-mono text-xs" style={{ color: "var(--nx-bad)" }}>
+          <p role="alert" className="nx-mono text-xs p-3" style={{ color: "var(--nx-bad)" }}>
             {error}
           </p>
         )}
         {response && (
           <>
-            <div className="p-3" style={{ background: "var(--nx-panel-2)", border: "var(--bd)" }}>
+            {/* Mono Card for Answer */}
+            <div
+              className="p-3"
+              style={{
+                background: "var(--nx-panel-2)",
+                border: "var(--bd)",
+              }}
+            >
               <div className="flex items-center justify-between mb-2">
-                <span className="nx-display text-xs" style={{ color: "var(--nx-ok)" }}>Answer</span>
-                <span className="flex gap-2">
-                  <span className="nx-chip" title={response.model ?? undefined}>
-                    {response.mode === "claude" ? "Claude" : response.mode === "openai" ? "OpenAI" : "offline"}
-                  </span>
-                  <span className="nx-chip">
-                    <span className="nx-dot" />
-                    {Math.round(response.confidence * 100)}% sure
-                  </span>
+                <span className="nx-display text-xs" style={{ color: "var(--nx-ok)" }}>
+                  ANSWER
                 </span>
+                <div className="flex gap-2">
+                  <span className="nx-chip text-[10px]" title={response.model ?? undefined}>
+                    {response.mode === "claude" ? "Claude" : response.mode === "openai" ? "OpenAI" : "Offline"}
+                  </span>
+                  <span className="nx-chip text-[10px]">
+                    <span className="nx-dot" />
+                    {Math.round(response.confidence * 100)}% confidence
+                  </span>
+                </div>
               </div>
-              <p className="nx-mono" style={{ fontSize: 13, lineHeight: "20px", color: "var(--nx-text)" }}>{response.answer}</p>
+              <p
+                className="nx-mono"
+                style={{ fontSize: 13, lineHeight: "20px", color: "var(--nx-text)", margin: 0 }}
+              >
+                {response.answer}
+              </p>
             </div>
+
+            {/* Provenance Badge */}
             <ProvenanceBadge
-              currentSource={response.current_sources[0]}
-              supersededSource={response.superseded_sources[0]}
               decisionId={decisionId}
+              currentSource={response.current_sources?.[0]}
+              supersededSource={response.superseded_sources?.[0]}
             />
-            {history.length > 1 && (
-              <div>
-                <p className="nx-display text-xs" style={{ color: "var(--nx-muted)", marginBottom: 6 }}>Earlier questions</p>
-                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                  {history.slice(1).map((h) => (
-                    <li key={h}>
-                      <button
-                        type="button"
-                        onClick={() => { setQuestion(h); ask(h); }}
-                        className="nx-mono text-xs hover:underline"
-                        style={{ background: "none", border: 0, color: "var(--nx-info)", cursor: "pointer", padding: "2px 0", textAlign: "left" }}
-                      >
-                        {h}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+
+            {/* Cypher Traces */}
             {response.cypher_queries?.length > 0 && (
-              <details>
-                <summary className="nx-mono text-xs" style={{ cursor: "pointer", color: "var(--nx-info)" }}>
-                  Cypher used
+              <details className="nx-panel p-2">
+                <summary className="nx-mono text-xs cursor-pointer select-none" style={{ color: "var(--nx-info)" }}>
+                  Cypher query used ({response.cypher_queries.length})
                 </summary>
-                <pre className="nx-mono nx-scroll mt-2 p-2 text-xs" style={{ background: "var(--nx-ink)", border: "1px solid var(--nx-line)", color: "var(--nx-info)", whiteSpace: "pre-wrap" }}>
+                <pre
+                  className="nx-mono nx-scroll mt-2 p-2 text-xs"
+                  style={{
+                    background: "var(--nx-ink)",
+                    border: "1px solid var(--nx-line)",
+                    color: "var(--nx-info)",
+                    whiteSpace: "pre-wrap",
+                    margin: 0,
+                  }}
+                >
                   {response.cypher_queries[0]}
                 </pre>
               </details>
@@ -134,27 +178,6 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
           </>
         )}
       </div>
-
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          ask(question);
-        }}
-      >
-        <label className="sr-only" htmlFor="nx-ask">Ask the company brain</label>
-        <input
-          id="nx-ask"
-          className="nx-input flex-1"
-          data-testid="ask-input"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask about a decision, owner or incident"
-        />
-        <button type="submit" className="nx-btn is-on" data-testid="ask-submit" disabled={loading}>
-          {loading ? "…" : "Ask"}
-        </button>
-      </form>
     </div>
   );
 }

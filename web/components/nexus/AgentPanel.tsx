@@ -17,7 +17,7 @@ import {
   type AgentRunResponse,
 } from "@/lib/nexus/api";
 import type { UseAgentStreamReturn } from "@/lib/nexus/useAgentStream";
-import { PixelZap } from "./PixelIcons";
+import { PixelZap, PixelRobot } from "./PixelIcons";
 
 interface AgentPanelProps {
   tenant: string;
@@ -205,7 +205,7 @@ export function AgentPanel({
       <div
         className="flex gap-1.5 p-2 shrink-0"
         style={{
-          borderBottom: "2px solid var(--nx-ink)",
+          borderBottom: "var(--bd)",
           background: "var(--nx-panel)",
         }}
       >
@@ -216,7 +216,10 @@ export function AgentPanel({
           aria-pressed={activeTab === "trace"}
           data-testid="tab-trace"
         >
-          Live Trace ({stepsToDisplay.length})
+          <span>TRACE</span>
+          <span style={{ color: stepsToDisplay.length > 0 ? "inherit" : "var(--nx-muted)", marginLeft: 4 }}>
+            ({stepsToDisplay.length})
+          </span>
         </button>
         <button
           type="button"
@@ -225,7 +228,15 @@ export function AgentPanel({
           aria-pressed={activeTab === "memory"}
           data-testid="tab-memory"
         >
-          Memory ({episodes.length + facts.length + procedures.length})
+          <span>MEMORY</span>
+          <span
+            style={{
+              color: episodes.length + facts.length + procedures.length > 0 ? "inherit" : "var(--nx-muted)",
+              marginLeft: 4,
+            }}
+          >
+            ({episodes.length + facts.length + procedures.length})
+          </span>
         </button>
         <button
           type="button"
@@ -234,7 +245,10 @@ export function AgentPanel({
           aria-pressed={activeTab === "tasks"}
           data-testid="tab-tasks"
         >
-          Tasks ({tasks.length})
+          <span>TASKS</span>
+          <span style={{ color: tasks.length > 0 ? "inherit" : "var(--nx-muted)", marginLeft: 4 }}>
+            ({tasks.length})
+          </span>
         </button>
       </div>
 
@@ -242,11 +256,113 @@ export function AgentPanel({
       {activeTab === "trace" && (
         <div className="flex-1 overflow-y-auto nx-scroll p-3 space-y-2.5">
           {stepsToDisplay.length === 0 ? (
-            <div className="text-center py-8" style={{ color: "var(--nx-dim)" }}>
-              <p className="text-xs">No active agent run recorded yet.</p>
-              <p className="text-xs mt-1">
-                Click <strong style={{ color: "var(--nx-lemon)" }}>Page Agents</strong> above to launch Scout, Planner, and Scribe.
-              </p>
+            <div className="flex flex-col gap-3 py-1">
+              {/* Compact standby block with pixel robot */}
+              <div
+                className="flex flex-col items-center justify-center p-3 text-center"
+                style={{
+                  background: "var(--nx-panel-2)",
+                  border: "1px solid var(--nx-line)",
+                }}
+              >
+                <div className="mb-1.5" style={{ color: "var(--nx-info)" }}>
+                  <PixelRobot size={22} />
+                </div>
+                <div className="nx-display text-xs" style={{ color: "var(--nx-text)", letterSpacing: ".06em" }}>
+                  POD ON STANDBY
+                </div>
+                <div className="nx-mono text-[11px] mt-1" style={{ color: "var(--nx-muted)", maxWidth: 280 }}>
+                  Pick an incident above and page the agents to trigger autonomous triage.
+                </div>
+              </div>
+
+              {/* 3 Agent Cards: Scout, Planner, Scribe */}
+              <div className="flex flex-col gap-2">
+                <div className="nx-display text-[11px]" style={{ color: "var(--nx-muted)" }}>
+                  TRIAGE SQUAD
+                </div>
+
+                {/* Scout Card */}
+                <div
+                  className="flex items-center gap-2.5 p-2"
+                  style={{
+                    background: "var(--nx-panel-2)",
+                    border: "1px solid var(--nx-line)",
+                    borderLeft: "3px solid var(--nx-info)",
+                  }}
+                >
+                  <span style={{ color: "var(--nx-info)" }}>
+                    <PixelRobot size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="nx-display text-xs" style={{ color: "var(--nx-info)" }}>
+                        SCOUT
+                      </span>
+                      <span className="nx-chip text-[9px]" style={{ height: 16, padding: "0 4px" }}>
+                        GRAPH
+                      </span>
+                    </div>
+                    <div className="nx-mono text-[11px] truncate" style={{ color: "var(--nx-muted)", marginTop: 2 }}>
+                      Investigates blast radius, dependencies & owners
+                    </div>
+                  </div>
+                </div>
+
+                {/* Planner Card */}
+                <div
+                  className="flex items-center gap-2.5 p-2"
+                  style={{
+                    background: "var(--nx-panel-2)",
+                    border: "1px solid var(--nx-line)",
+                    borderLeft: "3px solid var(--nx-warn)",
+                  }}
+                >
+                  <span style={{ color: "var(--nx-warn)" }}>
+                    <PixelRobot size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="nx-display text-xs" style={{ color: "var(--nx-warn)" }}>
+                        PLANNER
+                      </span>
+                      <span className="nx-chip text-[9px]" style={{ height: 16, padding: "0 4px" }}>
+                        PLAYBOOK
+                      </span>
+                    </div>
+                    <div className="nx-mono text-[11px] truncate" style={{ color: "var(--nx-muted)", marginTop: 2 }}>
+                      Synthesizes mitigation strategies from incident history
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scribe Card */}
+                <div
+                  className="flex items-center gap-2.5 p-2"
+                  style={{
+                    background: "var(--nx-panel-2)",
+                    border: "1px solid var(--nx-line)",
+                    borderLeft: "3px solid var(--nx-ok)",
+                  }}
+                >
+                  <span style={{ color: "var(--nx-ok)" }}>
+                    <PixelRobot size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="nx-display text-xs" style={{ color: "var(--nx-ok)" }}>
+                        SCRIBE
+                      </span>
+                      <span className="nx-chip text-[9px]" style={{ height: 16, padding: "0 4px" }}>
+                        MEMORY
+                      </span>
+                    </div>
+                    <div className="nx-mono text-[11px] truncate" style={{ color: "var(--nx-muted)", marginTop: 2 }}>
+                      Logs episodic memories, tasks & verified decisions
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             stepsToDisplay.map((step, idx) => {
