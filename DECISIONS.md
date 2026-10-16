@@ -58,6 +58,23 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 - **Decision Ledger Drawer:** Maintained a 240px persistent drawer at the bottom of the side panel collapsible to 36px via pixel chevron (`PixelChevronDown` / `PixelChevronUp`), displaying real-time `LIVE` (mint) or `REPLACED` (amber) status chips with clickable row interaction to highlight corresponding whiteboard notes.
 - **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified no panel area >40% empty on cold start, and saved screenshots to `docs/img/ui/phase-6-1440x900.png` and `docs/img/ui/phase-6-1920x1080.png`.
 
+### Phase 7: Graph View Polish (Convex Hulls, Fixed Screen Node Sizes, ShortNames & Simulation Tuning)
+- **Padded Convex Hulls:** Replaced static ellipses with mathematically exact padded convex hulls (Graham scan / Monotone chain with circular corner fillets). Hulls are filled with `var(--room-X-floor)` at 0.6 alpha and bordered with 2px dashed `4 4` strokes in team colors (`--room-X`). Recomputation is throttled to every 4 simulation ticks to maintain 60 FPS performance.
+- **Cluster Header Badges:** Positioned pixel-font badges (`--font-pixel` uppercase) 8px directly above each cluster hull's topmost coordinate, preventing hull and node occlusion.
+- **Fixed-Screen Node Hierarchy (`nodeCanvasObject` & `globalScale`):**
+  - **Person:** 14px circle with initials; labels appear conditionally at `scale >= 1.2` or on mouse hover.
+  - **Service:** 16px rack square with mini rack slots and green/red LED pips; shortName labels (`LEDGER`, `PAYOUTS`, `FRAUD`, `SESSIONS`, `AUTH`, `NOTIFY`, `CHECKOUT`, `TELEMETRY`, `MCP`, `MEMORY`) rendered with 3px ink halos. Zero ellipses.
+  - **Decision:** 14px diamonds rendered in mint (live) or amber with strikethrough (replaced).
+  - **Team Hub:** 18px circle with team acronym.
+  - **Agent:** 14px cyan/blue circle with agent initials (`SC`, `PL`, `SB`).
+  - **Incident:** 14px red square positioned adjacent to the affected service.
+- **Strict Edge Semantics:** Rendered solid `--nx-line` for `owns`, dashed `--nx-line` for `maintains`, solid `--nx-info` (0.6 alpha) for `affects`, curved amber arc with arrowhead and "replaces" label for `supersedes`, and dashed `--nx-bad` (0.7 alpha) for `superseded_source`.
+- **Canvas-Rendered HUD Legend:** Rendered the top-left edge legend directly in screen-space during `onRenderFramePost` using exact link stroke specifications and `--font-mono` typography.
+- **D3 Force Tuning & Cooldown Freeze:** Configured `charge: -180`, intra-team distance `48`, cross-team distance `140`, and `forceCollide(r + 6)`. Seeded initial positions from cluster islands and pinned team hubs to freeze layout after `cooldownTicks: 200`, eliminating simulation jitter during demos.
+- **Viewport Fitting:** Implemented automated `zoomToFit(400ms, padding 48)` on initial mount, container resize via `ResizeObserver`, and replay sync batch ingestion.
+- **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified all hub/service/decision labels readable with zero overlaps, and saved screenshots to `docs/img/ui/phase-7-1440x900.png` and `docs/img/ui/phase-7-1920x1080.png`.
+
+
 
 
 

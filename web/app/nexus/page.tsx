@@ -45,6 +45,16 @@ export default function NexusDashboard() {
   const [supersedeFlashing, setSupersedeFlashing] = useState(false);
   const prevDead = useRef(0);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get("view");
+      if (v === "graph" || v === "office") {
+        setView(v);
+      }
+    }
+  }, []);
+
   const loadTopology = useCallback(async () => {
     try {
       const data = await fetchTopology();

@@ -2,16 +2,18 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { forceCollide, forceX, forceY } from "d3-force-3d";
 import { TopologyData, TopologyNode } from "@/lib/nexus/api";
-import { layoutGraph, type GraphLink, type GraphNode } from "@/lib/nexus/graphLayout";
-import { FLOORS, RECORDS_FLOOR } from "@/lib/nexus/theme";
+import { layoutGraph, type GraphCluster, type GraphLink, type GraphNode } from "@/lib/nexus/graphLayout";
+import { AGENT_POD_ID } from "@/lib/nexus/office";
 import { NX } from "@/lib/nexus/tokens";
+import { getServiceShortName } from "./OfficeFloor";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center" style={{ color: "var(--nx-muted)" }}>
-      Drawing the graph…
+    <div className="w-full h-full flex items-center justify-center nx-mono text-xs" style={{ color: "var(--nx-muted)" }}>
+      Initializing Graph Topology…
     </div>
   ),
 });
@@ -22,16 +24,131 @@ export interface LiveTopologyProps {
   onNodeClick?: (node: TopologyNode) => void;
 }
 
-const INK = NX.ink;
-const CREAM = NX.text;
-const PAPER = NX.panel2;
-const PAPER_OLD = NX.panel;
-const CORAL = NX.bad;
-const SKY = NX.info;
-const MINT = NX.ok;
+type FGNode = GraphNode & {
+  x: number;
+  y: number;
+  vx?: number;
+  vy?: number;
+  fx?: number;
+  fy?: number;
+};
 
-type FGNode = GraphNode & { x: number; y: number; fx: number; fy: number };
-type FGLink = Omit<GraphLink, "source" | "target"> & { source: FGNode | string; target: FGNode | string };
+type FGLink = Omit<GraphLink, "source" | "target"> & {
+  source: FGNode | string;
+  target: FGNode | string;
+};
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface CachedHull {
+  clusterIndex: number;
+  name: string;
+  hullPoints: Point[];
+  floor: string;
+  stroke: string;
+  minY: number;
+  centerX: number;
+}
+
+function crossProduct(o: Point, a: Point, b: Point): number {
+  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+function computeConvexHull(points: Point[]): Point[] {
+  if (points.length <= 2) return points.slice();
+  const sorted = points.slice().sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+  const lower: Point[] = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && crossProduct(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+  const upper: Point[] = [];
+  for (let i = sorted.length - 1; i >= 0; i -= 1) {
+    const p = sorted[i];
+    while (upper.length >= 2 && crossProduct(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+function drawPaddedHull(ctx: CanvasRenderingContext2D, points: Point[], pad: number) {
+  if (points.length === 0) return;
+  if (points.length === 1) {
+    ctx.beginPath();
+    ctx.arc(points[0].x, points[0].y, pad, 0, Math.PI * 2);
+    return;
+  }
+  if (points.length === 2) {
+    const p1 = points[0];
+    const p2 = points[1];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const ang = Math.atan2(ny, nx);
+    ctx.beginPath();
+    ctx.arc(p2.x, p2.y, pad, ang, ang + Math.PI, false);
+    ctx.arc(p1.x, p1.y, pad, ang + Math.PI, ang + Math.PI * 2, false);
+    ctx.closePath();
+    return;
+  }
+  const k = points.length;
+  ctx.beginPath();
+  for (let i = 0; i < k; i += 1) {
+    const prev = points[(i - 1 + k) % k];
+    const curr = points[i];
+    const next = points[(i + 1) % k];
+
+    const dx1 = curr.x - prev.x;
+    const dy1 = curr.y - prev.y;
+    const len1 = Math.hypot(dx1, dy1) || 1;
+    const n1x = -dy1 / len1;
+    const n1y = dx1 / len1;
+
+    const dx2 = next.x - curr.x;
+    const dy2 = next.y - curr.y;
+    const len2 = Math.hypot(dx2, dy2) || 1;
+    const n2x = -dy2 / len2;
+    const n2y = dx2 / len2;
+
+    const ang1 = Math.atan2(n1y, n1x);
+    let ang2 = Math.atan2(n2y, n2x);
+    if (ang2 > ang1) ang2 -= Math.PI * 2;
+
+    ctx.arc(curr.x, curr.y, pad, ang1, ang2, true);
+  }
+  ctx.closePath();
+}
+
+const getClusterStyle = (id: string, name: string) => {
+  const lower = `${id} ${name}`.toLowerCase();
+  if (lower.includes("agent") || id === AGENT_POD_ID) {
+    return { floor: "rgba(24, 33, 47, 0.6)", stroke: NX.agents };
+  }
+  if (lower.includes("payment") || lower.includes("ledger")) {
+    return { floor: "rgba(46, 42, 32, 0.6)", stroke: NX.payments };
+  }
+  if (lower.includes("platform")) {
+    return { floor: "rgba(31, 44, 39, 0.6)", stroke: NX.platform };
+  }
+  if (lower.includes("growth")) {
+    return { floor: "rgba(33, 40, 56, 0.6)", stroke: NX.growth };
+  }
+  if (lower.includes("sre") || lower.includes("ops")) {
+    return { floor: "rgba(43, 35, 49, 0.6)", stroke: NX.sre };
+  }
+  return { floor: "rgba(30, 36, 45, 0.6)", stroke: NX.accent };
+};
 
 const initials = (name: string) =>
   name
@@ -40,33 +157,52 @@ const initials = (name: string) =>
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 
-const accentOf = (cluster: number, isRecords: boolean) => (isRecords ? RECORDS_FLOOR.accent : FLOORS[cluster % FLOORS.length].accent);
+interface ForceGraphInstance {
+  zoomToFit: (ms?: number, pad?: number) => void;
+  d3Force: (name: string, fn?: unknown) => {
+    strength: (val: unknown) => unknown;
+    distance: (val: unknown) => unknown;
+  } | undefined;
+}
 
 export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopologyProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const fgRef = useRef<{ zoomToFit: (ms?: number, pad?: number) => void } | null>(null);
-  const [size, setSize] = useState({ w: 800, h: 600 });
+  const fgRef = useRef<ForceGraphInstance | null>(null);
+  const [size, setSize] = useState({ w: 1000, h: 700 });
   const [hover, setHover] = useState<string | null>(null);
+
+  const fit = useCallback(() => {
+    fgRef.current?.zoomToFit(400, 48);
+  }, []);
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
+    const ro = new ResizeObserver(() => {
+      setSize({ w: el.clientWidth, h: el.clientHeight });
+      setTimeout(fit, 80);
+    });
     ro.observe(el);
     setSize({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
-  }, []);
+  }, [fit]);
 
   const layout = useMemo(() => layoutGraph(data), [data]);
   const graph = useMemo(
     () => ({
-      nodes: layout.nodes.map((n) => ({ ...n, fx: n.x, fy: n.y })) as FGNode[],
+      nodes: layout.nodes.map((n) => {
+        // Pin team hubs to seed positions to keep clusters stable
+        if (n.kind === "team") {
+          return { ...n, fx: n.x, fy: n.y };
+        }
+        return { ...n };
+      }) as FGNode[],
       links: layout.links.map((l) => ({ ...l })) as FGLink[],
     }),
     [layout],
   );
+
   const lit = useMemo(() => new Set(highlightIds), [highlightIds]);
-  const recordsIdx = useMemo(() => layout.clusters.findIndex((c) => c.id === "__records__"), [layout]);
 
   const neighbours = useMemo(() => {
     const m = new Map<string, Set<string>>();
@@ -79,204 +215,515 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
     return m;
   }, [layout]);
 
-  const fit = useCallback(() => fgRef.current?.zoomToFit(350, 105), []);
+  // Zoom to fit on initial mount and when data/batch updates
   useEffect(() => {
-    const t = setTimeout(fit, 450);
+    const t = setTimeout(fit, 280);
     return () => clearTimeout(t);
-  }, [fit, size.w, size.h, layout]);
+  }, [fit, data]);
+
+  // Configure D3 forces according to §6
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg) return;
+
+    const charge = fg.d3Force("charge");
+    if (charge) {
+      charge.strength(-180);
+    }
+
+    const link = fg.d3Force("link");
+    if (link) {
+      link.distance((l: unknown) => {
+        const edge = l as { source: FGNode | string; target: FGNode | string };
+        const s = typeof edge.source === "object" ? edge.source : null;
+        const t = typeof edge.target === "object" ? edge.target : null;
+        if (s && t && s.cluster !== undefined && t.cluster !== undefined && s.cluster === t.cluster) {
+          return 48; // intra-team
+        }
+        return 140; // cross-team
+      });
+    }
+
+    try {
+      if (forceCollide) {
+        fg.d3Force(
+          "collide",
+          forceCollide((node: unknown) => {
+            const n = node as FGNode;
+            const r = n.kind === "team" ? 18 : n.kind === "service" ? 16 : 14;
+            return r + 6;
+          }),
+        );
+      }
+    } catch {
+      // safe fallback
+    }
+
+    try {
+      const agentCluster = layout.clusters.find((c: GraphCluster) => c.id === AGENT_POD_ID);
+      if (agentCluster && forceX && forceY) {
+        fg.d3Force(
+          "agentPodX",
+          forceX((n: unknown) => ((n as FGNode).id.startsWith("PLAYBOOK") ? agentCluster.x : 0)).strength((n: unknown) =>
+            (n as FGNode).id.startsWith("PLAYBOOK") ? 0.25 : 0,
+          ),
+        );
+        fg.d3Force(
+          "agentPodY",
+          forceY((n: unknown) => ((n as FGNode).id.startsWith("PLAYBOOK") ? agentCluster.y : 0)).strength((n: unknown) =>
+            (n as FGNode).id.startsWith("PLAYBOOK") ? 0.25 : 0,
+          ),
+        );
+      }
+    } catch {
+      // safe fallback
+    }
+  }, [layout]);
 
   const faded = (id: string) => hover !== null && id !== hover && !neighbours.get(hover)?.has(id);
 
+  // Throttled convex hull calculation (every 4 ticks)
+  const frameRef = useRef(0);
+  const cachedHullsRef = useRef<CachedHull[]>([]);
+
+  const drawBackdrop = (ctx: CanvasRenderingContext2D, scale: number) => {
+    frameRef.current += 1;
+    const shouldRecompute = frameRef.current % 4 === 0 || cachedHullsRef.current.length === 0;
+
+    if (shouldRecompute) {
+      const nextHulls = layout.clusters.map((c, ci) => {
+        // Exclude incident nodes so incidents on services do not stretch the team hull
+        const clusterNodes = graph.nodes.filter((n) => n.cluster === ci && n.kind !== "incident");
+        const points: Point[] = clusterNodes.map((n) => ({ x: n.x, y: n.y }));
+        points.push({ x: c.x, y: c.y });
+        const hull = computeConvexHull(points);
+
+        const pad = 42;
+        let minY = Infinity;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        hull.forEach((p) => {
+          if (p.y < minY) minY = p.y;
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+        });
+
+        const style = getClusterStyle(c.id, c.name);
+        return {
+          clusterIndex: ci,
+          name: c.name,
+          hullPoints: hull,
+          floor: style.floor,
+          stroke: style.stroke,
+          minY: minY - pad,
+          centerX: minX < maxX ? (minX + maxX) / 2 : c.x,
+        };
+      });
+      cachedHullsRef.current = nextHulls;
+    }
+
+    // Render convex hulls with dashed stroke and badges
+    cachedHullsRef.current.forEach((hullData) => {
+      ctx.save();
+      const pad = 42;
+      drawPaddedHull(ctx, hullData.hullPoints, pad);
+      ctx.fillStyle = hullData.floor;
+      ctx.fill();
+      ctx.lineWidth = 2 / scale;
+      ctx.setLineDash([4 / scale, 4 / scale]);
+      ctx.strokeStyle = hullData.stroke;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Pixel badge placed above top-most point with 8px offset
+      const text = hullData.name.toUpperCase();
+      const fontPx = Math.max(8, Math.round(11 / scale));
+      ctx.font = `${fontPx}px "Silkscreen", monospace`;
+      const textW = ctx.measureText(text).width;
+      const badgeW = textW + 16 / scale;
+      const badgeH = 22 / scale;
+      const badgeX = hullData.centerX;
+      const badgeY = hullData.minY - 8 / scale - badgeH / 2;
+
+      ctx.fillStyle = NX.panel2;
+      ctx.strokeStyle = hullData.stroke;
+      ctx.lineWidth = 1.5 / scale;
+      ctx.beginPath();
+      ctx.rect(badgeX - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = hullData.stroke;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, badgeX, badgeY + 1 / scale);
+      ctx.restore();
+    });
+  };
+
+  // Screen-space HUD legend rendered on top of canvas matching §6
+  const drawHUD = (ctx: CanvasRenderingContext2D) => {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const x = 12;
+    const y = 12;
+    const w = 480;
+    const h = 28;
+
+    // Background panel with 1px border
+    ctx.fillStyle = "rgba(14, 19, 26, 0.94)";
+    ctx.strokeStyle = NX.line;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = `11px "JetBrains Mono", monospace`;
+    ctx.textBaseline = "middle";
+
+    let cx = x + 12;
+    const cy = y + h / 2;
+
+    // 1. owns (solid line)
+    ctx.strokeStyle = NX.line;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + 18, cy);
+    ctx.stroke();
+    cx += 24;
+    ctx.fillStyle = NX.muted;
+    ctx.fillText("owns", cx, cy);
+    cx += 48;
+
+    // 2. maintains (dashed line)
+    ctx.strokeStyle = NX.line;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + 18, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    cx += 24;
+    ctx.fillStyle = NX.muted;
+    ctx.fillText("maintains", cx, cy);
+    cx += 78;
+
+    // 3. affects (solid blue)
+    ctx.strokeStyle = "rgba(108, 182, 255, 0.75)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + 18, cy);
+    ctx.stroke();
+    cx += 24;
+    ctx.fillStyle = NX.muted;
+    ctx.fillText("affects", cx, cy);
+    cx += 64;
+
+    // 4. replaces (dashed warn)
+    ctx.strokeStyle = NX.warn;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + 18, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    cx += 24;
+    ctx.fillStyle = NX.muted;
+    ctx.fillText("replaces", cx, cy);
+    cx += 72;
+
+    // 5. superseded (dashed bad)
+    ctx.strokeStyle = "rgba(235, 87, 87, 0.8)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + 18, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    cx += 24;
+    ctx.fillStyle = NX.muted;
+    ctx.fillText("superseded", cx, cy);
+
+    ctx.restore();
+  };
+
+  // Node drawing matching §6 fixed screen sizes
   const drawNode = (raw: object, ctx: CanvasRenderingContext2D, scale: number) => {
     const n = raw as FGNode;
-    const accent = accentOf(n.cluster, n.cluster === recordsIdx);
-    const fs = Math.min(18, 12 / scale);
+    const style = getClusterStyle(layout.clusters[n.cluster]?.id ?? "", layout.clusters[n.cluster]?.name ?? "");
     const isLit = lit.has(n.id);
+    const isHovered = hover === n.id;
+
     ctx.save();
-    ctx.globalAlpha = faded(n.id) ? 0.22 : lit.size > 0 && n.kind !== "team" && !lit.has(n.id) ? 0.4 : 1;
+    ctx.globalAlpha = faded(n.id) ? 0.18 : lit.size > 0 && n.kind !== "team" && !lit.has(n.id) ? 0.4 : 1;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     if (n.kind === "team") {
+      // Team hub: 18px circle
+      const r = 9 / scale;
       ctx.beginPath();
-      ctx.arc(n.x, n.y, 24, 0, Math.PI * 2);
-      ctx.fillStyle = accent;
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = style.stroke;
       ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeStyle = NX.ink;
       ctx.stroke();
-      ctx.fillStyle = INK;
-      ctx.font = `700 ${Math.min(17, 14 / scale)}px "Atkinson Hyperlegible", sans-serif`;
-      ctx.fillText(n.label.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w)).slice(0, 2).map((w) => w[0].toUpperCase()).join(""), n.x, n.y + 1);
+
+      // Short team acronym inside hub
+      const acronym = n.label
+        .split(/\s+/)
+        .filter((w) => /^[A-Za-z]/.test(w))
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase() ?? "")
+        .join("");
+      ctx.font = `700 ${Math.max(7, 8 / scale)}px "JetBrains Mono", monospace`;
+      ctx.fillStyle = NX.ink;
+      ctx.fillText(acronym, n.x, n.y + 0.5 / scale);
+    } else if (n.kind === "agent") {
+      // Agent: 14px blue circle
+      const r = 7 / scale;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = NX.info;
+      ctx.fill();
+      ctx.lineWidth = isLit ? 3 / scale : 1.5 / scale;
+      ctx.strokeStyle = isLit ? NX.accent : NX.ink;
+      ctx.stroke();
+
+      ctx.font = `700 ${Math.max(6, 7 / scale)}px "JetBrains Mono", monospace`;
+      ctx.fillStyle = NX.ink;
+      ctx.fillText(initials(n.label), n.x, n.y + 0.5 / scale);
+
+      // Label with 3px ink halo
+      const fontPx = Math.max(9, 10 / scale);
+      ctx.font = `700 ${fontPx}px "JetBrains Mono", monospace`;
+      ctx.strokeStyle = NX.ink;
+      ctx.lineWidth = 3 / scale;
+      ctx.strokeText(n.label, n.x, n.y + r + 8 / scale);
+      ctx.fillStyle = NX.info;
+      ctx.fillText(n.label, n.x, n.y + r + 8 / scale);
     } else if (n.kind === "person") {
+      // Person: 14px circle with initials
+      const r = 7 / scale;
       ctx.beginPath();
-      ctx.arc(n.x, n.y, 17, 0, Math.PI * 2);
-      ctx.fillStyle = NX.panel;
-      ctx.fill();
-      ctx.lineWidth = isLit ? 4 : 2.5;
-      ctx.strokeStyle = isLit ? NX.accent : accent;
-      ctx.stroke();
-      ctx.fillStyle = CREAM;
-      ctx.font = `700 ${Math.min(16, 13 / scale)}px "JetBrains Mono", monospace`;
-      ctx.fillText(initials(n.label), n.x, n.y + 1);
-      ctx.font = `${fs}px "JetBrains Mono", monospace`;
-      ctx.fillStyle = CREAM;
-      ctx.fillText(n.label.split(" ")[0], n.x, n.y + 29);
-    } else if (n.kind === "service") {
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fillStyle = NX.panel2;
-      ctx.strokeStyle = isLit ? NX.accent : INK;
-      ctx.lineWidth = isLit ? 4 : 3;
-      ctx.beginPath();
-      ctx.rect(n.x - 17, n.y - 15, 34, 30);
       ctx.fill();
+      ctx.lineWidth = isLit ? 3 / scale : 1.5 / scale;
+      ctx.strokeStyle = isLit ? NX.accent : style.stroke;
       ctx.stroke();
-      for (let i = 0; i < 3; i += 1) {
-        ctx.fillStyle = NX.ink;
-        ctx.fillRect(n.x - 13, n.y - 11 + i * 9, 26, 6);
-        ctx.fillStyle = i === 0 && n.incident ? CORAL : MINT;
-        ctx.fillRect(n.x - 10, n.y - 10 + i * 9, 3, 3);
+
+      ctx.font = `700 ${Math.max(6, 7 / scale)}px "JetBrains Mono", monospace`;
+      ctx.fillStyle = NX.text;
+      ctx.fillText(initials(n.label), n.x, n.y + 0.5 / scale);
+
+      // Person labels show at scale >= 1.2 or on hover
+      if (scale >= 1.2 || isHovered) {
+        const firstName = n.label.split(" ")[0];
+        const fontPx = Math.max(9, 10 / scale);
+        ctx.font = `600 ${fontPx}px "JetBrains Mono", monospace`;
+        ctx.strokeStyle = NX.ink;
+        ctx.lineWidth = 3 / scale;
+        ctx.strokeText(firstName, n.x, n.y + r + 8 / scale);
+        ctx.fillStyle = NX.text;
+        ctx.fillText(firstName, n.x, n.y + r + 8 / scale);
       }
+    } else if (n.kind === "service") {
+      // Service: 16px rack square
+      const hw = 8 / scale;
+      ctx.beginPath();
+      ctx.rect(n.x - hw, n.y - hw, hw * 2, hw * 2);
+      ctx.fillStyle = NX.panel2;
+      ctx.fill();
+      ctx.lineWidth = isLit ? 3 / scale : 2 / scale;
+      ctx.strokeStyle = isLit ? NX.accent : n.incident ? NX.bad : NX.ink;
+      ctx.stroke();
+
+      // Mini rack lines inside
+      ctx.fillStyle = NX.ink;
+      ctx.fillRect(n.x - hw + 2 / scale, n.y - hw / 2, hw * 2 - 4 / scale, 2 / scale);
+      ctx.fillRect(n.x - hw + 2 / scale, n.y + hw / 4, hw * 2 - 4 / scale, 2 / scale);
+
+      // Status pip
+      ctx.fillStyle = n.incident ? NX.bad : NX.ok;
+      ctx.fillRect(n.x - hw + 2 / scale, n.y - hw / 2, 2 / scale, 2 / scale);
+
       if (n.incident) {
-        ctx.fillStyle = CORAL;
-        ctx.strokeStyle = INK;
-        ctx.lineWidth = 2;
+        ctx.fillStyle = NX.bad;
         ctx.beginPath();
-        ctx.arc(n.x + 17, n.y - 15, 6, 0, Math.PI * 2);
+        ctx.arc(n.x + hw, n.y - hw, 3 / scale, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
       }
-      // label sits outside the ring, away from the team hub, so it never lands on people
-      const c = layout.clusters[n.cluster];
-      const dx = n.x - (c?.x ?? 0);
-      const dy = n.y - (c?.y ?? 0);
-      ctx.font = `700 ${fs}px "JetBrains Mono", monospace`;
-      ctx.fillStyle = CREAM;
-      if (!n.hasDecision && Math.abs(dx) > Math.abs(dy) * 0.8) {
-        ctx.textAlign = dx > 0 ? "left" : "right";
-        ctx.fillText(n.label.length > 18 ? `${n.label.slice(0, 17)}…` : n.label, n.x + (dx > 0 ? 24 : -24), n.y + 1);
-      } else {
-        ctx.fillText(n.label.length > 22 ? `${n.label.slice(0, 21)}…` : n.label, n.x, n.y + (n.hasDecision ? 30 : dy > 0 ? 28 : -26));
-      }
-    } else {
-      const w = 74;
-      const h = 36;
-      ctx.fillStyle = n.dead ? PAPER_OLD : PAPER;
-      ctx.strokeStyle = isLit ? NX.accent : n.dead ? CORAL : INK;
-      ctx.lineWidth = isLit ? 4 : 2.5;
-      if (n.dead) ctx.setLineDash([5, 3]);
+
+      // Always show service label using shortName mapping
+      const shortName = getServiceShortName(n.label);
+      const fontPx = Math.max(9, 10 / scale);
+      ctx.font = `700 ${fontPx}px "JetBrains Mono", monospace`;
+      ctx.strokeStyle = NX.ink;
+      ctx.lineWidth = 3 / scale;
+      ctx.strokeText(shortName, n.x, n.y + hw + 8 / scale);
+      ctx.fillStyle = NX.text;
+      ctx.fillText(shortName, n.x, n.y + hw + 8 / scale);
+    } else if (n.kind === "decision") {
+      // Decision: 14px diamond (mint live / amber replaced)
+      const d = 7 / scale;
       ctx.beginPath();
-      ctx.rect(n.x - w / 2, n.y - h / 2, w, h);
-      ctx.fill();
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = n.dead ? NX.muted : INK;
-      ctx.font = `700 ${Math.min(15, 13 / scale)}px "JetBrains Mono", monospace`;
-      ctx.fillText(n.label, n.x, n.y - 3);
-      ctx.font = `${Math.min(11, 9 / scale)}px "JetBrains Mono", monospace`;
+      ctx.moveTo(n.x, n.y - d);
+      ctx.lineTo(n.x + d, n.y);
+      ctx.lineTo(n.x, n.y + d);
+      ctx.lineTo(n.x - d, n.y);
+      ctx.closePath();
+
       ctx.fillStyle = n.dead ? NX.warn : NX.ok;
-      ctx.fillText(n.dead ? "REPLACED" : "LIVE", n.x, n.y + 11);
+      ctx.fill();
+      ctx.lineWidth = isLit ? 3 / scale : 1.5 / scale;
+      ctx.strokeStyle = isLit ? NX.accent : NX.ink;
+      ctx.stroke();
+
+      // Always show decision label with 3px ink halo
+      const fontPx = Math.max(9, 10 / scale);
+      ctx.font = `700 ${fontPx}px "JetBrains Mono", monospace`;
+      ctx.strokeStyle = NX.ink;
+      ctx.lineWidth = 3 / scale;
+      ctx.strokeText(n.label, n.x, n.y + d + 8 / scale);
+      ctx.fillStyle = n.dead ? NX.warn : NX.ok;
+      ctx.fillText(n.label, n.x, n.y + d + 8 / scale);
+
       if (n.dead) {
-        ctx.strokeStyle = CORAL;
-        ctx.lineWidth = 2;
+        // Strike-through line on replaced decision label
+        const tw = ctx.measureText(n.label).width;
+        ctx.strokeStyle = NX.bad;
+        ctx.lineWidth = 1.5 / scale;
         ctx.beginPath();
-        ctx.moveTo(n.x - w / 2 + 6, n.y - 3);
-        ctx.lineTo(n.x + w / 2 - 6, n.y - 3);
+        ctx.moveTo(n.x - tw / 2, n.y + d + 8 / scale);
+        ctx.lineTo(n.x + tw / 2, n.y + d + 8 / scale);
         ctx.stroke();
       }
+    } else if (n.kind === "incident") {
+      // Incident: 14px red square
+      const hw = 7 / scale;
+      ctx.beginPath();
+      ctx.rect(n.x - hw, n.y - hw, hw * 2, hw * 2);
+      ctx.fillStyle = NX.bad;
+      ctx.fill();
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeStyle = NX.ink;
+      ctx.stroke();
+
+      const fontPx = Math.max(9, 10 / scale);
+      ctx.font = `700 ${fontPx}px "JetBrains Mono", monospace`;
+      ctx.strokeStyle = NX.ink;
+      ctx.lineWidth = 3 / scale;
+      ctx.strokeText(n.label, n.x, n.y + hw + 8 / scale);
+      ctx.fillStyle = NX.bad;
+      ctx.fillText(n.label, n.x, n.y + hw + 8 / scale);
     }
+
     ctx.restore();
   };
 
+  // Edge drawing matching §6 specifications
   const drawLink = (raw: object, ctx: CanvasRenderingContext2D, scale: number) => {
     const l = raw as FGLink;
     const s = l.source as FGNode;
     const t = l.target as FGNode;
     if (typeof s !== "object" || typeof t !== "object") return;
+
     ctx.save();
-    ctx.globalAlpha = hover !== null && s.id !== hover && t.id !== hover ? 0.12 : 1;
+    ctx.globalAlpha = hover !== null && s.id !== hover && t.id !== hover ? 0.15 : 1;
     ctx.setLineDash([]);
-    if (l.kind === "member") {
-      ctx.strokeStyle = "rgba(159,179,176,0.28)";
-      ctx.lineWidth = 1.5;
-    } else if (l.kind === "owns") {
-      ctx.strokeStyle = "rgba(92,200,240,0.85)";
-      ctx.lineWidth = 3;
+
+    if (l.kind === "owns") {
+      // owns = solid --nx-line
+      ctx.strokeStyle = NX.line;
+      ctx.lineWidth = 2 / scale;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(t.x, t.y);
+      ctx.stroke();
     } else if (l.kind === "maintains") {
-      ctx.strokeStyle = "rgba(107,227,165,0.7)";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
+      // maintains = dashed --nx-line
+      ctx.strokeStyle = NX.line;
+      ctx.lineWidth = 1.5 / scale;
+      ctx.setLineDash([4 / scale, 4 / scale]);
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(t.x, t.y);
+      ctx.stroke();
     } else if (l.kind === "affects") {
-      ctx.strokeStyle = "rgba(246,239,214,0.55)";
-      ctx.lineWidth = 2;
-    } else {
-      ctx.strokeStyle = CORAL;
-      ctx.lineWidth = 3;
-      ctx.setLineDash([8, 5]);
-    }
-    ctx.beginPath();
-    ctx.moveTo(s.x, s.y);
-    if (l.kind === "supersedes") {
+      // affects = solid --nx-info at 0.6
+      ctx.strokeStyle = "rgba(108, 182, 255, 0.6)";
+      ctx.lineWidth = 2 / scale;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(t.x, t.y);
+      ctx.stroke();
+    } else if (l.kind === "supersedes") {
+      // replaces = dashed --nx-warn with an arrow
+      ctx.strokeStyle = NX.warn;
+      ctx.lineWidth = 2.5 / scale;
+      ctx.setLineDash([6 / scale, 3 / scale]);
+
       const mx = (s.x + t.x) / 2;
       const my = (s.y + t.y) / 2;
       const dx = t.x - s.x;
       const dy = t.y - s.y;
       const len = Math.hypot(dx, dy) || 1;
-      const cx = mx - (dy / len) * 58;
-      const cy = my + (dx / len) * 58;
+      const cx = mx - (dy / len) * (40 / scale);
+      const cy = my + (dx / len) * (40 / scale);
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
       ctx.quadraticCurveTo(cx, cy, t.x, t.y);
       ctx.stroke();
       ctx.setLineDash([]);
+
       const ang = Math.atan2(t.y - cy, t.x - cx);
-      const ax = t.x - Math.cos(ang) * 40;
-      const ay = t.y - Math.sin(ang) * 22;
-      ctx.fillStyle = CORAL;
+      const ax = t.x - Math.cos(ang) * (18 / scale);
+      const ay = t.y - Math.sin(ang) * (18 / scale);
+      ctx.fillStyle = NX.warn;
       ctx.beginPath();
       ctx.moveTo(ax, ay);
-      ctx.lineTo(ax - Math.cos(ang - 0.45) * 12, ay - Math.sin(ang - 0.45) * 12);
-      ctx.lineTo(ax - Math.cos(ang + 0.45) * 12, ay - Math.sin(ang + 0.45) * 12);
+      ctx.lineTo(ax - Math.cos(ang - 0.45) * (10 / scale), ay - Math.sin(ang - 0.45) * (10 / scale));
+      ctx.lineTo(ax - Math.cos(ang + 0.45) * (10 / scale), ay - Math.sin(ang + 0.45) * (10 / scale));
       ctx.closePath();
       ctx.fill();
-      ctx.font = `700 ${Math.min(15, 12 / scale)}px "Atkinson Hyperlegible", sans-serif`;
+
+      ctx.font = `700 ${Math.max(9, 10 / scale)}px "JetBrains Mono", monospace`;
       ctx.textAlign = "center";
-      ctx.fillStyle = CORAL;
-      ctx.fillText("replaces", (mx + cx) / 2 + 2, (my + cy) / 2 - 8);
+      ctx.textBaseline = "middle";
+      ctx.strokeStyle = NX.ink;
+      ctx.lineWidth = 3 / scale;
+      ctx.strokeText("replaces", (mx + cx) / 2, (my + cy) / 2 - 6 / scale);
+      ctx.fillStyle = NX.warn;
+      ctx.fillText("replaces", (mx + cx) / 2, (my + cy) / 2 - 6 / scale);
+    } else if (l.kind === "superseded_source") {
+      // superseded-source edges = dashed --nx-bad at 0.7
+      ctx.strokeStyle = "rgba(235, 87, 87, 0.7)";
+      ctx.lineWidth = 2 / scale;
+      ctx.setLineDash([4 / scale, 4 / scale]);
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(t.x, t.y);
+      ctx.stroke();
     } else {
+      // member = faint line
+      ctx.strokeStyle = "rgba(43, 55, 71, 0.4)";
+      ctx.lineWidth = 1 / scale;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
       ctx.lineTo(t.x, t.y);
       ctx.stroke();
     }
     ctx.restore();
-  };
-
-  const drawBackdrop = (ctx: CanvasRenderingContext2D, scale: number) => {
-    layout.clusters.forEach((c, i) => {
-      const accent = accentOf(i, c.id === "__records__");
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(c.x, c.y, c.rx, c.r, 0, 0, Math.PI * 2);
-      ctx.fillStyle = `${accent}12`;
-      ctx.fill();
-      ctx.lineWidth = 1.5 / scale + 0.5;
-      ctx.setLineDash([10, 8]);
-      ctx.strokeStyle = `${accent}55`;
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.font = `${Math.min(14, 10 / scale)}px "Press Start 2P", monospace`;
-      const text = c.name.toUpperCase();
-      const w = ctx.measureText(text).width + 24;
-      const h = Math.min(30, 24 / Math.max(scale, 0.5));
-      ctx.fillStyle = accent;
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.roundRect(c.x - w / 2, c.y - c.r - h / 2 + 8, w, h, 4);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = INK;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, c.x, c.y - c.r + 9);
-      ctx.restore();
-    });
   };
 
   const handleClick = (raw: object) => {
@@ -289,12 +736,19 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
   const hitArea = (raw: object, color: string, ctx: CanvasRenderingContext2D) => {
     const n = raw as FGNode;
     ctx.fillStyle = color;
-    const w = n.kind === "team" ? 90 : n.kind === "decision" ? 40 : 22;
-    ctx.fillRect(n.x - w, n.y - 24, w * 2, 48);
+    const w = (n.kind === "team" ? 18 : n.kind === "service" ? 16 : 14) * 1.5;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, w, 0, Math.PI * 2);
+    ctx.fill();
   };
 
   return (
-    <div ref={wrapRef} data-testid="live-topology-canvas" className="absolute inset-0 select-none" style={{ background: "var(--nx-bg)" }}>
+    <div
+      ref={wrapRef}
+      data-testid="live-topology-canvas"
+      className="absolute inset-0 select-none overflow-hidden"
+      style={{ background: "var(--nx-bg)" }}
+    >
       <ForceGraph2D
         ref={fgRef as never}
         width={size.w}
@@ -308,22 +762,18 @@ export function LiveTopology({ data, highlightIds = [], onNodeClick }: LiveTopol
         linkCanvasObject={drawLink}
         linkCanvasObjectMode={() => "replace"}
         onRenderFramePre={drawBackdrop}
+        onRenderFramePost={drawHUD}
         onNodeHover={(n) => setHover(n ? (n as FGNode).id : null)}
         onNodeClick={handleClick}
         enableNodeDrag={false}
-        cooldownTicks={0}
-        warmupTicks={0}
+        cooldownTicks={200}
+        warmupTicks={40}
         minZoom={0.25}
         maxZoom={4}
       />
-      <div className="absolute left-3 top-3 flex flex-wrap gap-x-4 gap-y-1 px-3 py-2" style={{ background: "rgba(7,12,16,.82)", fontSize: 13, color: "var(--nx-dim)", maxWidth: "70%" }}>
-        <span><b style={{ color: SKY }}>━</b> owns</span>
-        <span><b style={{ color: MINT }}>╍</b> maintains</span>
-        <span><b style={{ color: CREAM }}>━</b> decision affects service</span>
-        <span><b style={{ color: CORAL }}>╍</b> replaces</span>
-        <span style={{ color: "var(--nx-dim)" }}>Hover to focus, scroll to zoom</span>
-      </div>
-      <button type="button" className="nx-btn absolute right-3 bottom-3" onClick={fit}>
+
+      {/* Bottom-right fit view button */}
+      <button type="button" className="nx-btn absolute right-3 bottom-3 z-10" onClick={fit}>
         Fit view
       </button>
     </div>

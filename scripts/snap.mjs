@@ -61,7 +61,8 @@ async function takeScreenshots() {
     }
 
     await send("Page.enable");
-    await send("Page.navigate", { url: "http://localhost:3000/nexus" });
+    const targetUrl = process.argv[4] || "http://localhost:3000/nexus";
+    await send("Page.navigate", { url: targetUrl });
 
     // Wait for data to load
     await sleep(2500);
