@@ -158,6 +158,7 @@
 .nx-dot.is-bad { background: var(--nx-bad); }
 .nx-dot.is-busy { background: var(--nx-warn); }
 .nx-dot.is-muted { background: var(--nx-muted); }
+.nx-dot.is-info { background: var(--nx-info); }
 
 /* Inputs and Selects (§7) */
 .nx-input,

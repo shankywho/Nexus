@@ -42,6 +42,8 @@ export default function NexusDashboard() {
   const [llm, setLlm] = useState<Health["llm"] | null>(null);
   const [showTrackInfo, setShowTrackInfo] = useState(false);
   const [ledgerCollapsed, setLedgerCollapsed] = useState(false);
+  const [supersedeFlashing, setSupersedeFlashing] = useState(false);
+  const prevDead = useRef(0);
 
   const loadTopology = useCallback(async () => {
     try {
@@ -120,6 +122,16 @@ export default function NexusDashboard() {
 
   const decisions = useMemo(() => topology.nodes.filter((n) => n.group === "Decision"), [topology.nodes]);
   const dead = useMemo(() => decisions.filter((n) => String(n.properties?.status) === "superseded").length, [decisions]);
+  
+  useEffect(() => {
+    if (dead > prevDead.current && prevDead.current >= 0) {
+      setSupersedeFlashing(true);
+      const timer = setTimeout(() => setSupersedeFlashing(false), 400);
+      return () => clearTimeout(timer);
+    }
+    prevDead.current = dead;
+  }, [dead]);
+
   const openIncidents = useMemo(
     () => topology.nodes.filter((n) => n.group === "Incident" || n.group === "incident"),
     [topology.nodes]
@@ -357,7 +369,13 @@ export default function NexusDashboard() {
             <div className="flex items-center gap-2 shrink-0">
               <span className="nx-chip text-xs">{topology.nodes.length} things</span>
               <span className="nx-chip text-xs">{topology.links.length} links</span>
-              <span className="nx-chip text-xs" style={{ color: dead > 0 ? "var(--nx-warn)" : "var(--nx-muted)" }}>
+              <span
+                className={`nx-chip text-xs ${supersedeFlashing ? "nx-flash" : ""}`}
+                style={{
+                  color: dead > 0 ? "var(--nx-warn)" : "var(--nx-muted)",
+                  borderColor: dead > 0 ? "var(--nx-warn)" : "var(--nx-line)",
+                }}
+              >
                 <span className={`nx-dot ${dead > 0 ? "is-busy" : "is-muted"}`} />
                 {dead} replaced
               </span>
@@ -572,7 +590,7 @@ export default function NexusDashboard() {
 
       {/* 36px Merged Footer */}
       <MergedFooter
-        live={live}
+        streamStatus={systemStatus.stream}
         refreshKey={syncTick + (event?.seq ?? 0)}
         liveDecisionsCount={decisions.length - dead}
         deadDecisionsCount={dead}

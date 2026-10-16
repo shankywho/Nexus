@@ -26,3 +26,11 @@ This log records design decisions, tradeoffs, and judgment calls made during the
 - **Merged Footer (36px):** Replaced disjoint status bars with a single unified 36px footer combining SSE stream status, live source event telemetry counts (Slack, Linear, PRs, ADRs, Docs, Inc), and a dynamically dimmed graph legend on the right.
 - **Deliverables:** Verified zero-wrap at 1440×900 and 1920×1080, verified TypeScript and ESLint (`npm run lint && npm run build`), and saved screenshots to `docs/img/ui/phase-2-1440x900.png` and `docs/img/ui/phase-2-1920x1080.png`.
 
+### Phase 3: Status Semantics & Zero-State Colours
+- **Unified Single-Source Status:** Centralized all status computations into `useSystemStatus()`. Eliminates discrepancy between header and footer status reporting.
+- **Cold-Start Red Elimination:** Resolved the race condition where SSE stream disconnected status was displayed as red `stream down` on cold start even when FalkorDB and API are healthy. Set stream status to muted grey `stream idle` on cold start.
+- **Supersede Replay Flash:** Added `nx-flash` 8-frame `steps(8, end)` CSS animation on the replaced decisions counter chip when superseded decisions increase during sync replay.
+- **Tenant Display Consistency:** Ensured tenant display strictly uses brand name ("Acme Payments") on screen, with internal identifier `acme` restricted solely to tooltips and API parameters.
+- **Deliverables:** Verified zero red on cold start while API is up, verified clean build with 0 ESLint warnings, and saved screenshots to `docs/img/ui/phase-3-1440x900.png` and `docs/img/ui/phase-3-1920x1080.png`.
+
+

@@ -4,7 +4,11 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { fetchSources, SourceEvent } from "@/lib/nexus/api";
 
 export interface MergedFooterProps {
-  live: boolean;
+  streamStatus: {
+    dotClass: string;
+    label: string;
+    tooltip: string;
+  };
   refreshKey?: number;
   liveDecisionsCount: number;
   deadDecisionsCount: number;
@@ -21,7 +25,7 @@ const LABELS: Array<{ kind: string; label: string }> = [
 ];
 
 export function MergedFooter({
-  live,
+  streamStatus,
   refreshKey = 0,
   liveDecisionsCount,
   deadDecisionsCount,
@@ -65,9 +69,9 @@ export function MergedFooter({
     >
       {/* Left side: Stream status and counts */}
       <div className="flex items-center gap-3 min-w-0 overflow-hidden">
-        <span className="nx-chip" style={{ height: 22, padding: "0 6px" }}>
-          <span className={`nx-dot ${live ? "" : "is-muted"}`} />
-          <span>{live ? "stream idle" : "stream down"}</span>
+        <span className="nx-chip" style={{ height: 22, padding: "0 6px" }} title={streamStatus.tooltip}>
+          <span className={`nx-dot ${streamStatus.dotClass}`} />
+          <span>{streamStatus.label}</span>
         </span>
 
         <ul className="flex items-center gap-2.5 text-xs" style={{ listStyle: "none", margin: 0, padding: 0 }}>

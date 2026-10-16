@@ -72,11 +72,12 @@ export function useSystemStatus({
         : "Set ANTHROPIC_API_KEY in .env and restart API to enable live Claude intelligence";
 
     // 3. Stream (SSE) status
+    // Spec §3: "A red offline while the API is up is a bug; it should read grey stream idle."
     const streamState: StreamState = isStreaming
       ? "streaming"
-      : streamLive
-      ? "connected-idle"
-      : "disconnected";
+      : online === false
+      ? "disconnected"
+      : "connected-idle";
     const streamDotClass =
       streamState === "streaming"
         ? "nx-blink"
@@ -93,10 +94,12 @@ export function useSystemStatus({
       streamState === "streaming"
         ? "SSE ingestion stream active"
         : streamState === "connected-idle"
-        ? "SSE ingestion connection open (waiting for events)"
-        : "SSE ingestion stream disconnected";
+        ? streamLive
+          ? "SSE ingestion connected (idle, waiting for events)"
+          : "SSE ingestion standby (API online, waiting for stream)"
+        : "SSE ingestion stream disconnected (backend offline)";
 
-    // 4. Pod status
+    // 4. Pod status: standby / running / done / error | muted / blue pulsing / mint / red
     const podState: PodState = podError
       ? "error"
       : podRunning
@@ -106,7 +109,7 @@ export function useSystemStatus({
       : "standby";
     const podDotClass =
       podState === "running"
-        ? "nx-blink"
+        ? "is-info nx-blink"
         : podState === "done"
         ? ""
         : podState === "error"
