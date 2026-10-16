@@ -486,7 +486,7 @@ export function OfficeFloor({
                             style={{
                               width: 24,
                               height: 20,
-                              background: isDead ? "var(--nx-warn)" : "#f6efd6",
+                              background: isDead ? "var(--nx-warn)" : "var(--nx-note)",
                               color: "var(--nx-ink)",
                               border: "1px solid var(--nx-ink)",
                               boxShadow: "0 1px 2px rgba(0,0,0,0.4)",
@@ -619,7 +619,7 @@ export function OfficeFloor({
           aria-hidden="true"
         >
           <svg width="22" height="15" viewBox="0 0 22 15" style={{ imageRendering: "pixelated" }}>
-            <rect width="22" height="15" fill="#f6efd6" stroke="var(--nx-ink)" strokeWidth="1.5" />
+            <rect width="22" height="15" fill="var(--nx-note)" stroke="var(--nx-ink)" strokeWidth="1.5" />
             <polyline points="2,2 11,8 20,2" fill="none" stroke="var(--nx-ink)" strokeWidth="1.5" />
           </svg>
         </div>

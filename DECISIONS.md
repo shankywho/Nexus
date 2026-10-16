@@ -88,6 +88,27 @@ This log records design decisions, tradeoffs, and judgment calls made during the
   - Verified that every control on the floor, in the panels, and in drawers is reachable and operable via keyboard.
 - **Deliverables:** Built cleanly (`npm run lint && npm run build`), verified keyboard navigation across all controls and reduced-motion enforcement, and saved screenshots to `docs/img/ui/phase-8-1440x900.png` and `docs/img/ui/phase-8-1920x1080.png`.
 
+### Phase 9: Final Submission Artifacts & Acceptance Verification
+- **Dual-Resolution Multi-View Screenshots:** Captured and committed before/after screenshots for both Office and Graph views at 1440×900 and 1920×1080 in `docs/img/ui/`:
+  - `office-before-1440x900.png` & `office-before-1920x1080.png`
+  - `graph-before-1440x900.png` & `graph-before-1920x1080.png`
+  - `office-after-1440x900.png` & `office-after-1920x1080.png`
+  - `graph-after-1440x900.png` & `graph-after-1920x1080.png`
+  - Granular milestone phase screenshots `phase-1-*` through `phase-8-*` preserved for traceability.
+- **Strict Lint Compliance (Final Audit):**
+  - `grep -rn "rounded" web/components/nexus/`: **0 hits**
+  - `grep -rn "font-sans" web/components/nexus/`: **0 hits**
+  - `grep -rnE '[🤖💡⚡▶●✓✗✉🔍]' web/components/nexus/`: **0 hits**
+  - `grep -rnE '#[0-9a-fA-F]{3,6}' web/components/nexus/`: **0 hits**
+- **Final Acceptance Checklist:**
+  - [x] **One header row:** 56px non-wrapping header containing title, status compound chip, track modal popover, tenant selector, segmented view control, and replay sync button.
+  - [x] **Two fonts only:** Silkscreen (pixel display, titles, uppercase buttons/badges) and JetBrains Mono (code, data, descriptions, tables). Zero sans-serif.
+  - [x] **Zero ellipses on the floor:** `shortName` mapping (`LEDGER`, `PAYOUTS`, `FRAUD`, `SESSIONS`, `AUTH`, `NOTIFY`, `CHECKOUT`, `TELEMETRY`, `MCP`, `MEMORY`) on racks; first-name only tags on desks.
+  - [x] **Zero red on cold start:** SSE disconnected state defaults to muted grey `stream idle`; red indicators restricted solely to active incidents (`INC-xx`) or genuine API disconnection.
+  - [x] **Dynamic legend dimming:** Footer legend dynamically dims items with 0 count on screen; top-left graph HUD legend renders all 5 edge types with exact matching stroke styles.
+  - [x] **Simultaneous supersede moment:** Real-time sync replay triggers 6-frame flip animation turning `DEC-017` amber on the Platform whiteboard, draws amber curved "replaces" arc with arrowhead in the graph view, and renders `REPLACED → DEC-021` chip in the decision ledger drawer simultaneously.
+
+
 
 
 

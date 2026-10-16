@@ -17,6 +17,7 @@
   --nx-info:      #6cb6ff;   /* agents, links, selection */
   --nx-warn:      #f2a65a;   /* replaced decision, busy */
   --nx-bad:       #eb5757;   /* errors, open incident ONLY */
+  --nx-note:      #f6efd6;   /* whiteboard sticky note cream */
 
   /* team floors: dark tinted tiles + bright stripe (night office) */
   --room-payments-floor: #2e2a20;  --room-payments: #e0b866;

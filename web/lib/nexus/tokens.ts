@@ -16,6 +16,7 @@ export const NX = {
   info: "#6cb6ff",
   warn: "#f2a65a",
   bad: "#eb5757",
+  note: "#f6efd6",
 
   // Team floor colors for graph clusters
   paymentsFloor: "#2e2a20",
