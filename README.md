@@ -50,7 +50,8 @@ Port in use? Set `NEXUS_FALKORDB_PORT`, `NEXUS_API_PORT`, `NEXUS_WEB_PORT` or `N
 | Office | http://localhost:3000/nexus |
 | API and OpenAPI docs | http://localhost:8000/docs |
 | FalkorDB | `localhost:6379` |
-| MCP server | http://localhost:8080 |
+| NEXUS MCP tools | http://localhost:8000/api/mcp/tools |
+| FalkorDB MCP container | `localhost:8080` (`NEXUS_MCP_PORT`; another app may already use 8080) |
 
 ### Model answers
 
