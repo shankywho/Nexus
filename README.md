@@ -14,9 +14,9 @@ Flat vector search over team history returns stale answers. A Redis migration fr
 
 - **Company brain.** Events become typed nodes (people, teams, services, decisions, incidents, PRs, tickets) with links back to their source. A supersession engine sets `invalid_at` on older decisions when a newer one reverses them. Four audits (who owns what, decision trace, stale knowledge, bus factor) are single Cypher queries.
 - **Ask Brain.** A router finds the entities in a question, graph context is read from FalkorDB, and a model writes the answer from that context only. Every cited id is checked against the graph, and replaced sources move out of the "current" list. Without a key, answers are built from the graph directly.
-- **Agents that act.** Scout, Planner and Scribe handle an incident in turn: blast radius over `DEPENDS_ON`, PageRank criticality, owners, the newest live decision that affects the service or its dependencies, then they flag that decision, page the owner and open a ticket. Each tool call is stored with its Cypher, row count and latency.
+- **Agents that act.** Scout, Planner and Scribe handle an incident in turn: blast radius over `DEPENDS_ON`, PageRank criticality (`algo.pageRank`), owners, the newest live decision that affects the service or its dependencies, then they flag that decision, page the owner and open a ticket. Each tool call is stored with its Cypher, row count and latency.
 - **Agent memory.** Native FalkorDB memory per tenant: episodes, facts with validity times, procedural playbooks, tasks with atomic claims and handoffs, conversation turns and tool-call traces.
-- **MCP.** The agent tool registry is exposed over the Model Context Protocol at `/api/mcp`. The `falkordb/mcpserver` container also runs beside the API for schema and read-only queries.
+- **Tool registry.** The agent tools are listed and callable over HTTP at `/api/mcp/tools` and `/api/mcp/tools/call`, and are registered on an `MCPServer` from the official `mcp` SDK. The `falkordb/mcpserver` container also runs in Compose; the NEXUS agents do not call it.
 - **Live office.** While events stream in, people react, envelopes fly to the service or decision they concern, incidents ring the rack, and replaced boards get stamped. Motion is off under `prefers-reduced-motion`.
 
 What the agents do not do: they run their tools in a fixed order, and the graph (not a model) picks which decision to review. A recalled playbook is shown but does not skip steps. The model only writes Ask Brain answers.
@@ -28,11 +28,11 @@ Requires Docker with Compose.
 ```bash
 cp .env.example .env     # defaults run offline; add GROQ_API_KEY for model answers
 make up                  # builds and starts FalkorDB, API, web and the MCP server
-make seed                # loads the full sample company (76 events)
+make seed                # loads the full sample company (76 events); agent memory starts empty
 open http://localhost:3000
 ```
 
-For a replay, run `make baseline` instead. It loads the company as of Sep 30 plus sample agent memory. Then click **Replay Sync** in the UI: as `INC-77` and `PR-1184` stream in, `DEC-017` (sessions in Redis) is stamped replaced and `DEC-021` appears.
+For a replay, run `make baseline` instead. It loads the company as of Sep 30 plus sample agent memory (`scripts/seed_memory.py`). Then click **Replay Sync** in the UI: as `INC-77` and `PR-1184` stream in, `DEC-017` (sessions in Redis) is stamped replaced and `DEC-021` appears.
 
 Things to try:
 
@@ -50,7 +50,7 @@ Port in use? Set `NEXUS_FALKORDB_PORT`, `NEXUS_API_PORT`, `NEXUS_WEB_PORT` or `N
 | Office | http://localhost:3000/nexus |
 | API and OpenAPI docs | http://localhost:8000/docs |
 | FalkorDB | `localhost:6379` |
-| NEXUS MCP tools | http://localhost:8000/api/mcp/tools |
+| NEXUS tool list | http://localhost:8000/api/mcp/tools |
 | FalkorDB MCP container | `localhost:8080` (`NEXUS_MCP_PORT`; another app may already use 8080) |
 
 ### Model answers
@@ -180,6 +180,7 @@ FalkorDB holds several graphs in one instance. `org_id` isolates tenants in the 
 | `(:Decision)-[:TRACKED_BY]->(:Ticket)` | Ticket link |
 | `(:Decision \| :Incident)-[:AFFECTS]->(:Service)` | Impact |
 | `(:Person)-[:KNOWS_ABOUT]->(:Service \| :Decision)` | Expertise |
+| `AUTHORED`, `PARTICIPATED_IN`, `DECIDED_IN`, `REVERSES`, `DERIVED_FROM` | Links from people and source events to the nodes built from them |
 
 ### `nexus_temporal`
 
@@ -201,35 +202,30 @@ FalkorDB holds several graphs in one instance. `org_id` isolates tenants in the 
 | `AgentRun`, `ToolCall` | Trace: tool, args, Cypher, row count, latency |
 | `Action` | Ticket, page or decision flag the agents wrote |
 
-Relationships: `HAS_TURN`, `STEP` (run to tool call), `TOUCHED` (tool call or episode to entity), `HANDOFF`, `PRODUCED`, and `SUPERSEDES` between facts.
+Relationships: `HAS_TURN`, `OWNS_CONVERSATION`, `STEP` (run to tool call), `TOUCHED` (tool call or episode to entity), `HANDOFF`, `PRODUCED`, `EXECUTED`, `FLAGS`, `TARGETS` and `SUPERSEDES` between facts.
 
 ## Queries and algorithms
 
 All Cypher lives in `api/nexus_api/cypher/*.cypher` or next to the service that uses it. The ones the product depends on:
 
 ```cypher
-// Criticality: PageRank over service dependencies
+// Criticality: PageRank over service dependencies (the tool falls back to in-degree if the procedure is unavailable)
 CALL algo.pageRank('Service', 'DEPENDS_ON')
 YIELD node, score
 RETURN node.id AS service, node.name AS name, score
 ORDER BY score DESC
 
-// Bridges: betweenness centrality
-CALL algo.betweenness()
-YIELD node, score
-WHERE 'Service' IN labels(node)
-RETURN node.id AS service, score ORDER BY score DESC LIMIT 5
-
-// Blast radius: everything that depends on a failing service
+// Blast radius: everything that depends on a failing service (up to 4 hops)
 MATCH path = (root:Service {id: $service_id, org_id: $org_id})<-[:DEPENDS_ON*1..4]-(down:Service)
 RETURN down.id AS affected_service, length(path) AS depth
 ORDER BY depth ASC
 
-// Bus factor: services with a single maintainer
-MATCH (p:Person {org_id: $org_id})-[:MAINTAINS]->(s:Service {org_id: $org_id})
-WITH s, collect(p) AS maintainers, count(p) AS n
-WHERE n = 1
-RETURN s.id AS service_id, maintainers[0].name AS sole_maintainer
+// Bus factor: people ranked by how many links they hold, with their expertise
+MATCH (p:Person {org_id: $org_id})-[r]-()
+WITH p, count(r) AS degree
+OPTIONAL MATCH (p)-[k:KNOWS_ABOUT]->(s:Service)
+RETURN p, degree, collect({service: s.id, weight: k.weight}) AS expertise
+ORDER BY degree DESC LIMIT 10
 
 // Decision trace: up to three SUPERSEDES hops, with PRs and incidents
 MATCH (d:Decision {id: $decision_id, org_id: $org_id})
@@ -279,16 +275,16 @@ Tools are plain functions with JSON schemas in `api/nexus_api/agents/tools.py`. 
 
 | Tool | What it does |
 |---|---|
-| `blast_radius` | Variable-length `DEPENDS_ON` walk and BFS from a failing service |
+| `blast_radius` | Variable-length `DEPENDS_ON` walk from a failing service |
 | `who_owns` | Team, maintainers and experts for a service |
-| `criticality_rank` | `algo.pageRank` and `algo.betweenness` over `DEPENDS_ON` |
+| `criticality_rank` | `algo.pageRank` over `DEPENDS_ON` |
 | `find_implicated_decisions` | Two-hop `AFFECTS` and `DEPENDS_ON` search for the newest live decision |
 | `decision_trace` | `SUPERSEDES` chain, PRs and incidents for a decision |
-| `find_experts` | People who `KNOWS_ABOUT` a service |
+| `find_experts` | Maintainers and domain experts for a service |
 | `recall`, `remember` | Read and write agent memory |
 | `flag_decision_for_review`, `page_owner`, `open_ticket` | Write `Action` nodes |
 
-`api/nexus_api/mcp_server.py` serves the same registry with the official `mcp` SDK at `/api/mcp`. Any MCP client, for example `npx @modelcontextprotocol/inspector`, can list and call the tools.
+`api/nexus_api/mcp_server.py` lists the tools at `GET /api/mcp/tools` and runs one with `POST /api/mcp/tools/call` (`{"tool": "who_owns", "args": {"service_id": "web-checkout"}}`). The same functions are registered on an `MCPServer` from the official `mcp` SDK, but NEXUS does not yet serve it over an MCP transport, so a standard MCP client cannot connect to it. The agents call the registry in-process.
 
 ## API
 
@@ -298,7 +294,7 @@ Auth: reads are open. `POST /api/admin/reset`, `DELETE /api/sources/{event_id}` 
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health`, `/api/health` | Liveness, graph counts, `llm.mode` (`groq`, `claude`, `openai`, `scripted`) |
+| `GET` | `/health`, `/healthz`, `/api/health` | Liveness, graph counts, `llm.mode` (`groq`, `claude`, `openai`, `scripted`) |
 | `POST` | `/api/ingest/event` | Ingest one event. Idempotent on event id |
 | `POST` | `/api/audits/who-owns-what` | Ownership audit |
 | `POST` | `/api/audits/decision-trace` | Decision lineage. Optional `{decision_id, service_id}` |
@@ -311,10 +307,12 @@ Auth: reads are open. `POST /api/admin/reset`, `DELETE /api/sources/{event_id}` 
 | `POST` | `/api/sync/simulate` | Replay `fixtures/company/events.jsonl`. 409 if a run is active |
 | `GET` | `/api/sync/status` | Progress of the active or latest run |
 | `POST` | `/api/sync/cancel` | Cancel the run |
-| `GET` | `/api/events/stream` | Server-Sent Events: `sync.progress`, `ingest.received`, `agent.step`, `task.handoff`, `agent.completed` |
+| `GET` | `/api/events/stream` | Server-Sent Events: `sync.progress`, `ingest.received`, `agent.started`, `agent.step`, `task.handoff`, `agent.completed`, `decision.superseded`, `graph.delta`, `ask.step`, `ask.completed` |
 | `GET` | `/api/sources` | List source events |
 | `DELETE` | `/api/sources/{event_id}` | Erase a source event and nodes derived only from it |
 | `GET` | `/api/runs`, `/api/runs/{run_id}` | Run history and step trace |
+| `GET` | `/api/mcp/tools` | Tool list with JSON schemas |
+| `POST` | `/api/mcp/tools/call` | Run one tool: `{tool, args}` |
 | `POST` | `/api/agents/run` | Run Scout, Planner, Scribe on an incident |
 | `GET` | `/api/agents/incidents` | Sample incidents to page agents with |
 | `GET` | `/api/agents/runs/{run_id}` | Trace of one agent run |
@@ -356,7 +354,7 @@ make logs       # follow container logs
 make down       # stop the stack
 ```
 
-Run the API locally: `cd api && uv sync && uv run uvicorn nexus_api.main:app --reload --port 8000` (needs FalkorDB on `FALKORDB_HOST:FALKORDB_PORT`). Run the web app: `cd web && npm ci && npm run dev`. API unit tests need no services: `cd api && uv run pytest tests/unit`. Integration tests need FalkorDB and **reset its graphs**, so point them at a scratch instance. Live Graphiti extraction (`MOCK_EXTERNALS=false`) needs `uv sync --extra live`, which pulls in PyTorch. Browser tests: `cd web && npx playwright test`.
+Run the API locally: `cd api && uv sync && uv run uvicorn nexus_api.main:app --reload --port 8000` (needs FalkorDB on `FALKORDB_HOST:FALKORDB_PORT`). Run the web app: `cd web && npm ci && npm run dev`. API unit tests need no services: `cd api && uv run pytest tests/unit`. Integration tests need FalkorDB and **reset its graphs**, so point them at a scratch instance. Live Graphiti extraction (`MOCK_EXTERNALS=false`) needs `uv sync --extra live`, which pulls in PyTorch. Browser tests: `cd web && npm run test:e2e`.
 
 ## Configuration
 
