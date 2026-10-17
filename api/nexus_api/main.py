@@ -107,6 +107,10 @@ def create_app() -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+    @app.get("/", include_in_schema=False)
+    async def root() -> dict[str, str]:
+        return {"service": "NEXUS API", "health": "/health", "docs": "/docs"}
+
     @app.get("/debug", response_class=HTMLResponse)
     def debug_page() -> HTMLResponse:
         content = (
