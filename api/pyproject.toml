@@ -2,7 +2,6 @@
 name = "nexus-api"
 version = "0.1.0"
 description = "NEXUS API - Organizational Telemetry & Decision Graph"
-readme = "README.md"
 authors = [
     { name = "Shankar Pratap Singh" }
 ]

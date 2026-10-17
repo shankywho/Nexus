@@ -37,6 +37,7 @@ class FalkorClient:
                 port=self.port,
                 username=self.username,
                 password=self.password,
+                ssl=get_settings().FALKORDB_SSL,
             )
         return self._client
 

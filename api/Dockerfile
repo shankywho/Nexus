@@ -12,7 +12,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # dependencies first, so code changes do not reinstall them
-COPY api/pyproject.toml api/uv.lock api/README.md api/
+COPY api/pyproject.toml api/uv.lock api/
 RUN cd api && uv sync --frozen --no-dev --no-install-project
 
 COPY api/nexus_api api/nexus_api
@@ -30,6 +30,7 @@ WORKDIR /app/api
 
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://localhost:%s/health' % os.environ.get('PORT', '8000'), timeout=2)"
 
-CMD ["uvicorn", "nexus_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Hosts such as Render set PORT; locally it defaults to 8000.
+CMD ["sh", "-c", "uvicorn nexus_api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     FALKORDB_PORT: int = 6379
     FALKORDB_USERNAME: str | None = None
     FALKORDB_PASSWORD: str | None = None
+    FALKORDB_SSL: bool = False  # true for hosted FalkorDB that requires TLS
     GRAPH_COMPANY: str = "nexus_company"
     GRAPH_TEMPORAL: str = "nexus_temporal"
     GRAPH_DOCS: str = "nexus_docs"
@@ -47,6 +48,8 @@ class Settings(BaseSettings):
     ADMIN_TOKEN: str = "change-me"
     INGEST_TOKEN: str = ""  # when set, POST /api/ingest/event requires it as X-Ingest-Token
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    CORS_ORIGIN_REGEX: str = ""  # optional, e.g. https://nexus-.*\.vercel\.app for preview deploys
+    AUTO_SEED: str = ""  # "baseline" or "full": load sample data on startup when the graph is empty
 
     # Sync simulation
     SYNC_DEFAULT_INTERVAL_MS: int = 600

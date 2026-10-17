@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { AgentStepTrace } from "./api";
+import { EVENT_STREAM_URL } from "./apiBase";
 
 export interface TaskHandoffEvent {
   task_id: string;
@@ -52,7 +53,7 @@ export function useAgentStream(): UseAgentStreamReturn {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const es = new EventSource("/api/events/stream");
+    const es = new EventSource(EVENT_STREAM_URL);
     es.onopen = () => setLive(true);
     es.onerror = () => setLive(false);
 

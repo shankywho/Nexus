@@ -62,6 +62,45 @@ docker compose up -d api                # restart so the API reads the key
 
 The header chip changes from "offline answers" to the model name and each answer shows a model badge. The model gets decisions, owners, incidents and the best-matching events from FalkorDB. If the key is wrong or the call fails, the app falls back to offline answers and marks the answer `degraded`. Groq's free tier allows about 8,000 tokens a minute, so space out questions.
 
+## Deploy: Vercel (web) and Render (API)
+
+This setup needs no Render Blueprint: create the API service by hand in the dashboard. Do the steps in this order.
+
+**1. FalkorDB.** Render's free tier cannot host a database container, so use a hosted FalkorDB (for example a FalkorDB Cloud free instance) or any FalkorDB reachable from the internet. Note its host, port, username and password, and whether it needs TLS.
+
+**2. API on Render.** New, Web Service, connect this repo, then:
+
+| Field | Value |
+|---|---|
+| Runtime | Docker |
+| Dockerfile path | `api/Dockerfile` |
+| Docker build context | `.` (repository root) |
+| Health check path | `/health` |
+| Instance type | Free |
+
+Environment variables:
+
+| Variable | Value |
+|---|---|
+| `FALKORDB_HOST`, `FALKORDB_PORT` | From step 1 |
+| `FALKORDB_USERNAME`, `FALKORDB_PASSWORD` | From step 1 |
+| `FALKORDB_SSL` | `true` if the host requires TLS |
+| `ADMIN_TOKEN` | A long random string (guards reset and delete) |
+| `AUTO_SEED` | `baseline`: loads the sample company and agent memory on first start, only when the graph is empty |
+| `CORS_ORIGINS` | Your Vercel URL, for example `https://nexus.vercel.app` (no trailing slash). Fill in after step 3 |
+| `GROQ_API_KEY` | Optional, for model answers |
+
+Render sets `PORT` itself; the image reads it. Check `https://<service>.onrender.com/health` shows `"falkordb":"up"` and non-zero graph counts.
+
+**3. Web on Vercel.** Import the repo, set **Root Directory** to `web`, framework Next.js, and add one environment variable: `NEXT_PUBLIC_API_URL=https://<service>.onrender.com` (no trailing slash). Next.js bakes it in at build time, so redeploy after changing it. In this mode the browser calls the API and the event stream directly, so the API must allow your Vercel origin: go back and set `CORS_ORIGINS` on Render to the Vercel URL. For preview deployments, also set `CORS_ORIGIN_REGEX`, for example `https://nexus-.*\.vercel\.app`.
+
+Things to know about the free tiers:
+
+- A free Render service sleeps after about 15 minutes idle. The first request after that takes up to a minute while it wakes; open the API health URL before showing the app.
+- Its disk is temporary: run history (`var/nexus.db`) is lost on restart. Graph data and agent memory live in FalkorDB and persist.
+- `AUTO_SEED` only seeds an empty graph. To start over, run `POST /api/admin/reset` with your `X-Admin-Token`, then restart the service.
+- There is no login. Anyone with the URL can ask questions and run agents, which uses your Groq quota and writes to the agent memory graphs. Keep `ADMIN_TOKEN` set and the URL private if that matters.
+
 ## Architecture
 
 ```mermaid
@@ -372,8 +411,13 @@ All settings are environment variables; see [.env.example](.env.example).
 | `OPENAI_API_KEY` / `GOOGLE_API_KEY` | empty | Optional OpenAI provider and live graph extraction |
 | `ADMIN_TOKEN` | `change-me` | Needed as `X-Admin-Token` on reset, source deletion and `reset=true` replays. **Change it outside local development** |
 | `INGEST_TOKEN` | empty | When set, `POST /api/ingest/event` requires it |
-| `NEXUS_API_URL` | `http://localhost:8000` | API address the web app proxies to (build time) |
-| `CORS_ORIGINS` | `http://localhost:3000` | Allowed browser origins |
+| `NEXUS_API_URL` | `http://localhost:8000` | API address the Next.js proxy uses (local and Docker, build time) |
+| `CORS_ORIGINS` | `http://localhost:3000` | Allowed browser origins, comma separated |
+| `CORS_ORIGIN_REGEX` | empty | Optional regex for extra origins, such as Vercel previews |
+| `FALKORDB_USERNAME` / `FALKORDB_PASSWORD` / `FALKORDB_SSL` | empty / empty / `false` | Credentials and TLS for a hosted FalkorDB |
+| `AUTO_SEED` | empty | `baseline` or `full`: seed sample data on startup if the graph is empty |
+| `PORT` | `8000` | Port the container listens on (set by Render) |
+| `NEXT_PUBLIC_API_URL` | empty | Web only: call the API directly at this URL instead of the Next.js proxy (Vercel) |
 
 ## Benchmarks
 

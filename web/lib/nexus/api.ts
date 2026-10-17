@@ -1,7 +1,9 @@
 /**
  * Typed client for NEXUS API endpoints.
- * Routes through Next.js rewrites /api/nexus/* -> http://localhost:8000/api/*
+ * Routes through Next.js rewrites /api/nexus/* locally, or straight to NEXT_PUBLIC_API_URL when set (see apiBase.ts).
  */
+
+import { API_BASE } from "./apiBase";
 
 export interface TopologyNode {
   id: string;
@@ -67,7 +69,7 @@ export interface SyncStatus {
   run_id: string;
 }
 
-const BASE_URL = "/api/nexus";
+const BASE_URL = API_BASE;
 
 export async function fetchTopology(): Promise<TopologyData> {
   const res = await fetch(`${BASE_URL}/graph/topology`);

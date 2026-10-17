@@ -1,5 +1,6 @@
 """FastAPI application entrypoint for NEXUS."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -11,6 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from redis.exceptions import RedisError
 
+from nexus_api.bootstrap import seed_if_empty
 from nexus_api.config import get_settings
 from nexus_api.mcp_server import router as mcp_router
 from nexus_api.routes.admin import router as admin_router
@@ -35,8 +37,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Lifespan context manager for startup and shutdown tasks."""
     Path("var").mkdir(parents=True, exist_ok=True)
     if get_settings().ADMIN_TOKEN == "change-me":
-        logger.warning("ADMIN_TOKEN is the default value. Set your own before exposing this API.")
+        logger.warning(
+            "ADMIN_TOKEN is the default value. Set your own before exposing this API."
+        )
+    seed_task = (
+        asyncio.create_task(seed_if_empty()) if get_settings().AUTO_SEED else None
+    )
     yield
+    if seed_task:
+        seed_task.cancel()
 
 
 def create_app() -> FastAPI:
@@ -50,13 +59,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+    origins = [
+        origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()
+    ]
     if not origins:
         origins = ["*"]
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
+        allow_origin_regex=settings.CORS_ORIGIN_REGEX or None,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -67,7 +79,9 @@ def create_app() -> FastAPI:
         logger.error("FalkorDB error: %s", exc)
         return JSONResponse(
             status_code=503,
-            content={"detail": "The graph database is unreachable. Check that FalkorDB is running."},
+            content={
+                "detail": "The graph database is unreachable. Check that FalkorDB is running."
+            },
         )
 
     # Register routers
@@ -95,7 +109,11 @@ def create_app() -> FastAPI:
 
     @app.get("/debug", response_class=HTMLResponse)
     def debug_page() -> HTMLResponse:
-        content = debug_file.read_text(encoding="utf-8") if debug_file.exists() else "<h1>NEXUS Debug</h1>"
+        content = (
+            debug_file.read_text(encoding="utf-8")
+            if debug_file.exists()
+            else "<h1>NEXUS Debug</h1>"
+        )
         return HTMLResponse(content=content)
 
     return app

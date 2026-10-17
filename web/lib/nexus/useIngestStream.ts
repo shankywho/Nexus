@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { EVENT_STREAM_URL } from "./apiBase";
 import type { IngestEvent } from "./events";
 
 /**
@@ -14,7 +15,7 @@ export function useIngestStream(): { live: boolean; event: IngestEvent | null } 
   const lastId = useRef<{ id: string; at: number } | null>(null);
 
   useEffect(() => {
-    const es = new EventSource("/api/events/stream");
+    const es = new EventSource(EVENT_STREAM_URL);
     es.onopen = () => setLive(true);
     es.onerror = () => setLive(false);
 
