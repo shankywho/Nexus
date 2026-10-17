@@ -344,6 +344,24 @@ open http://localhost:3000/nexus
   - `/api/ask` evaluates natural language questions against FalkorDB Cypher paths, returning current vs superseded sources, confidence, and owner attribution with graceful fallback when external LLM credit balances are zero.
   - Preserved real-time sync replay (`/api/sync/replay` via SSE) updating the decision ledger, flipping whiteboard notes to amber, and animating flying envelopes across the office floor.
 
+## Frontend Comprehensive Audit & Verification (Pre-Submission Polish)
+
+- **Unit Test Assertion Synchronization (`web/lib/nexus/office.test.ts`):**
+  - Track 1 agent pods and incident markers expanded `layoutGraph` from 4 node types to 6 (`team`, `person`, `service`, `decision`, `agent`, `incident`). Updated test assertions to validate all 6 node categories. All 8 unit tests pass in <150ms.
+- **Strict Zero-Emoji & Unicode Compliance (`web/components/nexus/LiveTopology.tsx`):**
+  - Eliminated residual raw Unicode arrows and bullets (`▶ TOUR`, `NEXT ▶`, `● 0.4ms`, `◼ FINISH`) from graph tour buttons and FalkorDB latency banner.
+  - Replaced with `<PixelPlay size={10} />` SVG icons and `<span className="nx-dot is-info" />`.
+  - Verified `grep -rnE '[🤖💡⚡▶●✓✗✉🔍]' web/components/nexus web/app/nexus` returns 0 hits across all components.
+- **Dead Code Pruning:**
+  - Removed `web/components/nexus/IngestionStreams.tsx` (dead component superseded by `MergedFooter.tsx`).
+  - Removed `web/lib/nexus/theme.ts` (superseded by token definitions in `globals.css` and `tokens.ts`).
+  - Updated `web/README.md` to document the active component manifest accurately.
+- **Playwright End-to-End Test Suite Synchronization (`web/e2e/tests/nexus.spec.ts`, `web/playwright.config.ts`):**
+  - Configured `baseURL: http://localhost:3000`, `open: 'never'`, and `channel: 'chrome'` to run natively on macOS without blocking terminal listeners.
+  - Synchronized audit assertion locator from legacy text (`text=X highlighted`) to current compact status chip format (`text=X hits` / `text=1 hit`).
+  - Verified 100% pass across all suites: `npm test` (8/8 pass), `npm run test:e2e` (1/1 pass), `npm run lint` (0 errors), and `npm run build` (Turbopack static prerender pass).
+
+
 
 
 

@@ -77,18 +77,18 @@ test.describe("NEXUS Web Features", () => {
 
     // 2. Click WHO OWNS WHAT
     await page.click('[data-testid="audit-who-owns-what"]');
-    await expect(page.locator("text=2 highlighted")).toBeVisible();
+    await expect(page.locator("text=2 hits")).toBeVisible();
 
     // 3. Click DECISION TRACE
     await page.click('[data-testid="audit-decision-trace"]');
-    await expect(page.locator("text=1 highlighted")).toBeVisible();
+    await expect(page.locator("text=1 hit")).toBeVisible();
 
     // 4. Click STALE KNOWLEDGE
     await page.click('[data-testid="audit-stale-knowledge"]');
-    await expect(page.locator("text=2 highlighted")).toBeVisible();
+    await expect(page.locator("text=2 hits")).toBeVisible();
 
     // 5. Click BUS FACTOR
     await page.click('[data-testid="audit-bus-factor"]');
-    await expect(page.locator("text=2 highlighted")).toBeVisible();
+    await expect(page.locator("text=2 hits")).toBeVisible();
   });
 });

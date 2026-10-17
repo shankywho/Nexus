@@ -8,6 +8,7 @@ import { layoutGraph, type GraphCluster, type GraphLink, type GraphNode } from "
 import { AGENT_POD_ID } from "@/lib/nexus/office";
 import { NX } from "@/lib/nexus/tokens";
 import { getServiceShortName } from "./OfficeFloor";
+import { PixelPlay } from "./PixelIcons";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
@@ -1008,7 +1009,14 @@ export function LiveTopology({
           style={{ height: 26, padding: "0 10px" }}
           title="Interactive incident triage walkthrough"
         >
-          {tourStep !== null ? "EXIT TOUR" : "▶ TOUR"}
+          {tourStep !== null ? (
+            "EXIT TOUR"
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <PixelPlay size={10} />
+              <span>TOUR</span>
+            </span>
+          )}
         </button>
 
         {/* Fit View Button */}
@@ -1053,8 +1061,9 @@ export function LiveTopology({
           <code className="nx-mono text-[10px] truncate" style={{ color: "var(--nx-text)" }}>
             {auditCypher || "MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 100"}
           </code>
-          <span className="nx-mono text-[9px] shrink-0" style={{ color: "var(--nx-ok)" }}>
-            ● 0.4ms
+          <span className="nx-mono text-[9px] shrink-0 flex items-center gap-1" style={{ color: "var(--nx-ok)" }}>
+            <span className="nx-dot is-info" style={{ width: 5, height: 5 }} />
+            <span>0.4ms</span>
           </span>
         </div>
       )}
@@ -1156,10 +1165,11 @@ export function LiveTopology({
               <button
                 type="button"
                 onClick={() => setTourStep((s) => (s ? s + 1 : 1))}
-                className="nx-btn nx-btn--primary text-xs"
+                className="nx-btn nx-btn--primary text-xs flex items-center gap-1.5"
                 style={{ height: 26, padding: "0 10px" }}
               >
-                NEXT ▶
+                <span>NEXT</span>
+                <PixelPlay size={10} />
               </button>
             ) : (
               <button
@@ -1171,7 +1181,7 @@ export function LiveTopology({
                 className="nx-btn is-on text-xs"
                 style={{ height: 26, padding: "0 10px" }}
               >
-                FINISH ◼
+                FINISH
               </button>
             )}
           </div>

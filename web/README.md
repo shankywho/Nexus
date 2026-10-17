@@ -7,7 +7,7 @@ Next.js app. `/` is the landing page and `/nexus` is the office. `web/` started 
 | `app/page.tsx`, `app/landing.css`, `components/landing/` | Landing page and its replay scene |
 | `app/nexus/page.tsx` | Page layout: audits, floor, mail room, ask panel, decision ledger |
 | `app/nexus/nexus.css` | Pixel theme tokens and base components |
-| `components/nexus/` | `OfficeFloor`, `LiveTopology`, `AskPanel`, `IngestionStreams`, `NodeInspector`, `ProvenanceBadge`, `AuditBar`, `SimulateSyncButton` |
+| `components/nexus/` | `OfficeFloor`, `LiveTopology`, `AgentPanel`, `AskPanel`, `MergedFooter`, `NodeInspector`, `ProvenanceBadge`, `AuditBar`, `SimulateSyncButton`, `PixelIcons` |
 | `lib/nexus/api.ts` | Typed client for the NEXUS API |
 | `lib/nexus/office.ts` | Pure logic that groups graph nodes into rooms (unit tested) |
 | `e2e/tests/nexus.spec.ts` | Playwright test for audits and the graph view |
