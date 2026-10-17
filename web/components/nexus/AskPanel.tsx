@@ -132,7 +132,7 @@ export function AskPanel({ onQuestionAnswered }: AskPanelProps) {
                 </span>
                 <div className="flex gap-2">
                   <span className="nx-chip text-[10px]" title={response.model ?? undefined}>
-                    {response.mode === "claude" ? "Claude" : response.mode === "openai" ? "OpenAI" : "Offline"}
+                    {{ groq: "Groq", claude: "Claude", openai: "OpenAI" }[response.mode ?? ""] ?? "Offline"}
                   </span>
                   <span className="nx-chip text-[10px]">
                     <span className="nx-dot" />

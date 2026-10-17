@@ -1,6 +1,5 @@
 """NEXUS MCP Server exposing graph tools via Model Context Protocol (Track 01 & 02)."""
 
-import json
 import logging
 from typing import Any
 
@@ -14,6 +13,7 @@ from nexus_api.agents.tools import (
     criticality_rank,
     decision_trace,
     find_experts,
+    find_implicated_decisions,
     flag_decision_for_review,
     open_ticket,
     page_owner,
@@ -32,6 +32,9 @@ mcp_server = MCPServer("nexus-mcp")
 mcp_server.tool(name="blast_radius", description="Calculate upstream affected services in dependency graph")(
     blast_radius
 )
+mcp_server.tool(
+    name="find_implicated_decisions", description="Find live decisions affecting a service or its dependencies"
+)(find_implicated_decisions)
 mcp_server.tool(name="who_owns", description="Look up owner team, maintainers, and domain experts")(who_owns)
 mcp_server.tool(name="decision_trace", description="Trace multi-hop decision causality and supersession chains")(
     decision_trace

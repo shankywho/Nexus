@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from nexus_api.adapters.falkor import get_falkor_client
-from nexus_api.adapters.llm import llm_mode
+from nexus_api.adapters.llm import llm_mode, llm_model_name
 from nexus_api.config import get_settings
 
 router = APIRouter(tags=["health"])
@@ -57,7 +57,7 @@ def get_health() -> dict[str, Any]:
         "llm": {
             "mode": llm_mode(),
             "provider": llm_mode(),
-            "model": settings.ANTHROPIC_MODEL if llm_mode() == "claude" else None,
+            "model": llm_model_name(),
         },
         "graphs": {
             "company": company_count,

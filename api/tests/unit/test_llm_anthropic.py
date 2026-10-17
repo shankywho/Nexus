@@ -59,6 +59,8 @@ async def test_generate_json_degrades_after_two_failures(monkeypatch: pytest.Mon
 
 def test_llm_mode_follows_key(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = get_settings()
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "")
+    monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
     monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "")
     assert llm_mode() == "scripted"
@@ -82,7 +84,48 @@ def test_rank_events_prefers_matching_text_and_ids() -> None:
 
 def test_stale_openai_provider_does_not_hide_an_anthropic_key(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = get_settings()
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "")
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
     monkeypatch.setattr(settings, "OPENAI_API_KEY", "")
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant-test")
     assert llm_mode() == "claude"
+
+
+def test_groq_key_selects_groq_and_provider_preference_wins(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "groq")
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "gsk_test")
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant-test")
+    assert llm_mode() == "groq"
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
+    assert llm_mode() == "claude"
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "")
+    assert llm_mode() == "groq"
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "")
+    assert llm_mode() == "scripted"
+
+
+@pytest.mark.asyncio
+async def test_groq_client_parses_json_and_degrades(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nexus_api.adapters.llm import GroqLLM
+
+    llm = GroqLLM()
+    replies = iter(['{"answer": "Postgres"}', "nope", "still nope"])
+
+    async def fake_ask(system: str, messages: list[dict[str, str]]) -> str:
+        return next(replies)
+
+    monkeypatch.setattr(llm, "_ask", fake_ask)
+    ok, degraded = await llm.generate_json("sys", "q", Out)
+    assert ok.answer == "Postgres" and not degraded
+    bad, degraded2 = await llm.generate_json("sys", "q", Out)
+    assert degraded2 and bad.answer == ""
+
+
+def test_get_llm_client_returns_groq_client_when_mode_is_groq(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nexus_api.adapters.llm import GroqLLM
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "groq")
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "gsk_test")
+    assert isinstance(llm_mod.get_llm_client(), GroqLLM)

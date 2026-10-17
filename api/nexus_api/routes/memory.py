@@ -5,14 +5,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 
 from nexus_api.memory.store import get_memory_store
-from nexus_api.routes.deps import get_tenant, get_user, require_admin
+from nexus_api.routes.deps import get_tenant, require_admin
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
 
 
 @router.get("/episodes")
 def list_episodes(
-    entities: list[str] = Query(default=[]),
+    entities: list[str] = Query(default=[]),  # noqa: B008
     tenant: str = Depends(get_tenant),
 ) -> dict[str, Any]:
     """Retrieve episodic memory records, optionally filtered by touched entities."""

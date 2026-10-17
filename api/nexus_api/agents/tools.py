@@ -5,7 +5,8 @@ and action generation. Every tool returns {result, cypher, rows, ms, touched_ids
 """
 
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from nexus_api.adapters.falkor import get_falkor_client
 from nexus_api.config import get_settings
@@ -226,7 +227,7 @@ def find_experts(service_id: str, org_id: str = "acme") -> dict[str, Any]:
     res = falkor.query(settings.GRAPH_COMPANY, cypher, {"service_id": service_id, "org_id": org_id})
     ms = int((time.time() - t0) * 1000)
 
-    maintainers = []
+    maintainers: list[dict[str, Any]] = []
     touched = [service_id]
     if res and res.result_set:
         maintainers = res.result_set[0][1] or []
@@ -318,8 +319,8 @@ def open_ticket(title: str, service_id: str, priority: str = "high", org_id: str
     t0 = time.time()
     settings = get_settings()
     falkor = get_falkor_client()
-    from datetime import UTC, datetime
     import uuid
+    from datetime import UTC, datetime
 
     action_id = f"act_ticket_{uuid.uuid4().hex[:6]}"
     now = datetime.now(UTC).isoformat()
@@ -366,8 +367,8 @@ def page_owner(service_id: str, message: str, org_id: str = "acme") -> dict[str,
     t0 = time.time()
     settings = get_settings()
     falkor = get_falkor_client()
-    from datetime import UTC, datetime
     import uuid
+    from datetime import UTC, datetime
 
     action_id = f"act_page_{uuid.uuid4().hex[:6]}"
     now = datetime.now(UTC).isoformat()
@@ -393,7 +394,7 @@ def page_owner(service_id: str, message: str, org_id: str = "acme") -> dict[str,
     )
     ms = int((time.time() - t0) * 1000)
 
-    paged = []
+    paged: list[dict[str, Any]] = []
     if res and res.result_set:
         paged = res.result_set[0][1] or []
 
@@ -411,8 +412,8 @@ def flag_decision_for_review(decision_id: str, reason: str, org_id: str = "acme"
     t0 = time.time()
     settings = get_settings()
     falkor = get_falkor_client()
-    from datetime import UTC, datetime
     import uuid
+    from datetime import UTC, datetime
 
     action_id = f"act_flag_{uuid.uuid4().hex[:6]}"
     now = datetime.now(UTC).isoformat()
@@ -451,8 +452,75 @@ def flag_decision_for_review(decision_id: str, reason: str, org_id: str = "acme"
     }
 
 
+def find_implicated_decisions(service_id: str, org_id: str = "acme") -> dict[str, Any]:
+    """Find decisions that affect a failing service or the services it depends on (2 hops).
+
+    This is the multi-hop step that lets the agent pick the decision to review from the graph,
+    instead of being told. Newest live decision first.
+    """
+    t0 = time.time()
+    settings = get_settings()
+    falkor = get_falkor_client()
+
+    deps_cypher = """
+    MATCH (root:Service {id: $service_id, org_id: $org_id})-[:DEPENDS_ON*1..2]->(dep:Service)
+    RETURN DISTINCT dep.id
+    """
+    res_deps = falkor.query(settings.GRAPH_COMPANY, deps_cypher, {"service_id": service_id, "org_id": org_id})
+    service_ids = [service_id] + [str(r[0]) for r in (res_deps.result_set if res_deps and res_deps.result_set else [])]
+
+    cypher = """
+    MATCH (d:Decision {org_id: $org_id})-[:AFFECTS]->(s:Service {org_id: $org_id})
+    WHERE s.id IN $service_ids
+    RETURN DISTINCT d.id AS id, d.status AS status, d.decided_at AS decided_at, d.superseded_by AS superseded_by, s.id AS via
+    ORDER BY decided_at DESC
+    """
+    res = falkor.query(settings.GRAPH_COMPANY, cypher, {"service_ids": service_ids, "org_id": org_id})
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in res.result_set if res and res.result_set else []:
+        if row[0] in seen:
+            continue
+        seen.add(row[0])
+        candidates.append(
+            {"id": row[0], "status": row[1], "decided_at": row[2], "superseded_by": row[3], "via_service": row[4]}
+        )
+    live = [c for c in candidates if c["status"] == "active"]
+    pool = live or candidates
+    chosen: dict[str, Any] | None = pool[0] if pool else None
+    ms = int((time.time() - t0) * 1000)
+    return {
+        "result": {
+            "services_checked": service_ids,
+            "candidates": candidates,
+            "chosen": chosen,
+            "reason": (
+                f"Newest live decision affecting {chosen['via_service']}" if chosen and live
+                else "No live decision found; showing the newest decision" if chosen
+                else "No decisions affect these services"
+            ),
+        },
+        "cypher": cypher.strip().replace("    ", " "),
+        "rows": len(candidates),
+        "ms": ms,
+        "touched_ids": [c["id"] for c in candidates] + service_ids,
+    }
+
+
 # Tool Definitions & Schema for MCP and LLM function calling
 TOOL_DEFINITIONS = [
+    {
+        "name": "find_implicated_decisions",
+        "description": "Find decisions that affect a service or its dependencies (2 hops); returns the newest live one.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "service_id": {"type": "string", "description": "Failing service ID"},
+                "org_id": {"type": "string", "default": "acme"},
+            },
+            "required": ["service_id"],
+        },
+    },
     {
         "name": "blast_radius",
         "description": "Calculate upstream affected services that depend on this service when it fails.",
@@ -577,6 +645,7 @@ TOOL_DEFINITIONS = [
 ]
 
 TOOLS_BY_NAME: dict[str, Callable[..., dict[str, Any]]] = {
+    "find_implicated_decisions": find_implicated_decisions,
     "blast_radius": blast_radius,
     "who_owns": who_owns,
     "decision_trace": decision_trace,

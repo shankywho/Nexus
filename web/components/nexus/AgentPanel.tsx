@@ -256,6 +256,22 @@ export function AgentPanel({
       {/* Tab 1: Live Trace (Explainable MCP Steps & Cypher) */}
       {activeTab === "trace" && (
         <div className="flex-1 overflow-y-auto nx-scroll p-3 space-y-2.5">
+          {stepsToDisplay.length > 0 && lastRunResponse && (
+            <div className="flex flex-wrap items-center gap-1.5" data-testid="run-summary">
+              <span className="nx-chip text-[10px]">{lastRunResponse.incident_id}</span>
+              <span className="nx-chip text-[10px]">{stepsToDisplay.length} steps</span>
+              {lastRunResponse.total_latency_ms !== undefined && (
+                <span className="nx-chip text-[10px]">{(lastRunResponse.total_latency_ms / 1000).toFixed(1)} s</span>
+              )}
+              <span
+                className="nx-chip text-[10px]"
+                data-testid="playbook-chip"
+                style={{ color: lastRunResponse.reused_playbook ? "var(--nx-ok)" : "var(--nx-muted)" }}
+              >
+                {lastRunResponse.reused_playbook ? "PLAYBOOK REUSED" : "NEW PLAYBOOK"}
+              </span>
+            </div>
+          )}
           {stepsToDisplay.length === 0 ? (
             <div className="flex flex-col gap-3 py-1">
               {/* Compact standby block with pixel robot */}
@@ -562,19 +578,22 @@ export function AgentPanel({
                       }}
                       className="space-y-1.5"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="nx-mono font-bold" style={{ color: "var(--nx-cream)" }}>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="nx-mono font-bold whitespace-nowrap" style={{ color: "var(--nx-cream)" }}>
                           {ep.incident_id}
                         </span>
-                        <span className="nx-chip" style={{ color: "var(--nx-mint)" }}>
-                          {ep.outcome}
+                        <span className="nx-mono text-[10px] whitespace-nowrap" style={{ color: "var(--nx-dim)" }}>
+                          {ep.created_at.slice(0, 16).replace("T", " ")}
                         </span>
                       </div>
+                      <p className="text-xs" style={{ color: "var(--nx-mint)" }}>
+                        {ep.outcome}
+                      </p>
                       <p className="text-xs" style={{ color: "var(--nx-dim)" }}>
                         {ep.summary}
                       </p>
                       <div className="flex flex-wrap gap-1 pt-1">
-                        {ep.entities_touched.map((entityId) => (
+                        {(ep.entities_touched ?? []).map((entityId) => (
                           <span
                             key={entityId}
                             className="nx-chip text-[11px]"
@@ -687,7 +706,7 @@ export function AgentPanel({
                         className="nx-mono text-xs p-2 flex items-center gap-1.5 flex-wrap"
                         style={{ background: "var(--nx-ink)", border: "1px solid var(--nx-line)" }}
                       >
-                        {proc.step_sequence.map((s, si) => (
+                        {(proc.step_sequence ?? []).map((s, si) => (
                           <React.Fragment key={si}>
                             <span style={{ color: "var(--nx-cream)" }}>{s}</span>
                             {si < proc.step_sequence.length - 1 && (
@@ -761,7 +780,7 @@ export function AgentPanel({
                     <span className="nx-display text-[10px]" style={{ color: "var(--nx-dim)" }}>
                       HANDOFF CHAIN:
                     </span>
-                    {task.handoffs.map((h, hi) => (
+                    {(task.handoffs ?? []).map((h, hi) => (
                       <div
                         key={hi}
                         className="p-2 space-y-1"

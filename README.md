@@ -19,7 +19,7 @@ Flat vector search over team history returns superseded answers. A migration to 
 - **Ask agent:** routes a question, runs multi-hop Cypher, validates against the graph, and returns current and superseded sources.
 - **HUD:** Next.js dashboard with an office floor-plan view and a live force-graph topology (superseded edges dashed red, active edges green), audit bar, ask panel and live sync via SSE.
 - **Live floor:** while events stream in, the actor reacts (halo, hop, a note saying what they are doing), an envelope flies to the service or decision it concerns, incidents ring the rack and flash a "!", replaced boards get stamped and new boards pop onto the wall. Motion is switched off for `prefers-reduced-motion`.
-- **Claude answers:** set `ANTHROPIC_API_KEY` and questions are answered by Claude from graph context, then checked against the graph so invented ids are dropped. Without a key, offline answers are built from the graph.
+- **Model answers:** set `GROQ_API_KEY` (or `ANTHROPIC_API_KEY`) and questions are answered by that model from graph context, then checked against the graph so invented ids are dropped. Without a key, offline answers are built from the graph.
 - **Zero-key mode:** `MOCK_EXTERNALS=true` runs everything offline with deterministic extractors.
 
 ## Repository layout
@@ -43,7 +43,7 @@ Flat vector search over team history returns superseded answers. A migration to 
 Requires Docker with Compose. Nothing else is needed to run the demo.
 
 ```bash
-cp .env.example .env     # defaults run offline; add ANTHROPIC_API_KEY to use Claude
+cp .env.example .env     # defaults run offline; add GROQ_API_KEY to use a live model
 make up                  # builds and starts FalkorDB, API, web and the MCP server
 make demo                # loads the company as of Sep 30
 open http://localhost:3000
@@ -66,15 +66,15 @@ Port in use? Set `NEXUS_FALKORDB_PORT`, `NEXUS_API_PORT`, `NEXUS_WEB_PORT` or `N
 | FalkorDB | `localhost:6379` |
 | MCP server | http://localhost:8080 |
 
-## Run with Claude
+## Run with a live model
 
 ```bash
-echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env     # your key; .env is git-ignored
-docker compose up -d api                         # restart the API so it reads the key
+echo 'GROQ_API_KEY=gsk_...' >> .env                 # your key; .env is git-ignored
+docker compose up -d api                            # restart the API so it reads the key
 make demo
 ```
 
-The header chip changes from "offline answers" to "Claude live", and each answer shows a Claude badge. The model gets the decisions, owners, incidents and best-matching events read from FalkorDB, and every id in its reply is checked against the graph. If the key is wrong or the call fails, the app falls back to offline answers and marks the answer `degraded`. See [docs/DEMO.md](docs/DEMO.md) for a recording script.
+The header chip changes from "offline answers" to the model name (`groq` or `claude`), and each answer shows a model badge. The model gets the decisions, owners, incidents and best-matching events read from FalkorDB, and every id in its reply is checked against the graph. If the key is wrong or the call fails, the app falls back to offline answers and marks the answer `degraded`. See [docs/DEMO.md](docs/DEMO.md) for a recording script.
 
 ## Development
 
@@ -98,8 +98,11 @@ All settings are environment variables. See [`.env.example`](.env.example).
 | `MOCK_EXTERNALS` | `true` | Offline mode. Set `false` to use a live LLM. |
 | `NEXUS_ORG_ID` | `acme` | Tenant id stored on every node. |
 | `FALKORDB_HOST` / `FALKORDB_PORT` | `localhost` / `6379` | Graph database. |
-| `ANTHROPIC_API_KEY` | empty | Turns on Claude answers. Restart the API after setting it. |
-| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Model used for answers. |
+| `GROQ_API_KEY` | empty | Turns on live answers through Groq. Restart the API after setting it. |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model used for answers. |
+| `ANTHROPIC_API_KEY` | empty | Alternative provider: answers with Claude. |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Claude model, if used. |
+| `LLM_PROVIDER` | `groq` | Preferred engine when several keys are set (`groq`, `anthropic`, `openai`). |
 | `OPENAI_API_KEY` / `GOOGLE_API_KEY` | empty | Only for the optional OpenAI provider and live graph extraction (`MOCK_EXTERNALS=false`). |
 | `ADMIN_TOKEN` | `change-me` | Required as `X-Admin-Token` on reset, source deletion and `reset=true` replays. **Change it outside local development.** |
 | `INGEST_TOKEN` | empty | When set, `POST /api/ingest/event` requires it as `X-Ingest-Token`. |
@@ -145,8 +148,8 @@ Benchmarked using `uv run --project api python scripts/loadtest.py --workers 10 
 
 NEXUS qualifies for and enters **all three tracks** of **Graph Hacks: Context for AI Agents** (WeMakeDevs x FalkorDB):
 
-- **Track 01: Agents That Act on Connected Data** — Multi-hop reasoning over service dependencies (`:Service-[:DEPENDS_ON]->:Service`), graph algorithms (`algo.pageRank`, `algo.betweenness`, BFS blast radius), tool selection through MCP (`mcp` Python SDK + `falkordb/mcpserver`), and explainable telemetry traces (`:AgentRun ➔ :ToolCall`).
-- **Track 02: Agent Memory and Coordination** — Native FalkorDB episodic, semantic (with bi-temporal invalidation), and procedural playbooks; shared state and zero-race atomic task handoffs between Scout ➔ Planner ➔ Scribe; high concurrency (>2,700 ops/sec); and hard tenant isolation (`nexus_memory_acme` vs `nexus_memory_globex`).
+- **Track 01: Agents That Act on Connected Data** — Multi-hop reasoning over service dependencies (`:Service-[:DEPENDS_ON]->:Service`), graph algorithms (`algo.pageRank`, `algo.betweenness`, BFS blast radius), a tool registry exposed over MCP (`/api/mcp`, official `mcp` SDK; the `falkordb/mcpserver` container runs alongside), where the agent picks the decision to review from the graph, and explainable traces of every tool call with its Cypher (`:AgentRun ➔ :ToolCall`). The built-in Scout, Planner and Scribe run the tools in a fixed order; the model only writes Ask Brain answers.
+- **Track 02: Agent Memory and Coordination** — Native FalkorDB episodic, semantic (with bi-temporal invalidation), and procedural playbooks; shared state and zero-race atomic task handoffs between Scout ➔ Planner ➔ Scribe; high concurrency (about 2,100 ops/sec, p95 97 ms in `scripts/loadtest.py` with 20 workers and 200 sessions on one laptop); and hard tenant isolation (`nexus_memory_acme` vs `nexus_memory_globex`).
 - **Track 03: Company Brain** — Multi-source telemetry (Slack, Jira, GitHub, ADRs) unified into a bi-temporal decision graph resolving who owns what and reversing stale decisions with 0% stale rate.
 
 ### Rule 3 Compliance (FalkorDB Must Do Real Work)

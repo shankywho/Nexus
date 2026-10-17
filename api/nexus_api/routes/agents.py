@@ -1,6 +1,7 @@
 """Agent routes for incident investigation and execution traces (Track 01 & 02)."""
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,8 @@ from pydantic import BaseModel, Field
 from nexus_api.agents.runtime import AgentRuntime
 from nexus_api.memory.store import get_memory_store
 from nexus_api.routes.deps import get_tenant
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -47,8 +50,8 @@ async def trigger_agent_run(
                             service_id = service_id or inc.get("service_id")
                             description = description or inc.get("description", "")
                             break
-            except Exception:
-                pass
+            except (OSError, ValueError) as exc:
+                logger.debug("demo incident lookup skipped: %s", exc)
         title = title or f"Incident {payload.incident_id}"
         service_id = service_id or "web-checkout"
 
@@ -98,5 +101,6 @@ def list_demo_incidents() -> dict[str, Any]:
     incidents_path = Path(__file__).resolve().parent.parent.parent.parent / "fixtures/company/demo_incidents.json"
     if incidents_path.exists():
         with open(incidents_path, encoding="utf-8") as f:
-            return json.load(f)
+            data: dict[str, Any] = json.load(f)
+            return data
     return {"incidents": []}

@@ -67,12 +67,13 @@ When an incident is ingested (e.g. `INC-83: web-checkout 5xx spike`), the autono
 1. **Blast Radius (`blast_radius`):** Traverses variable-length `DEPENDS_ON*1..4` upstream dependency trees to determine the exact blast radius of services impacted.
 2. **Ownership Discovery (`who_owns`):** Resolves which people and teams own the root service and all cascaded services (`OWNS`, `MAINTAINS`, `MEMBER_OF`).
 3. **Criticality Ranking (`criticality_rank`):** Executes FalkorDB native graph algorithm `algo.pageRank('Service', 'DEPENDS_ON')` to compute the topological importance of each affected node.
-4. **Decision Super-session Trace (`decision_trace`):** Walks multi-hop `[:SUPERSEDES*1..4]` chains to check if an architectural decision affecting the service was superseded or stale.
+4. **Implicated Decisions (`find_implicated_decisions`):** Finds decisions that `AFFECTS` the failing service or anything it `DEPENDS_ON` within two hops, and picks the newest live one. The agent is not told which decision to review; the graph answers.
+5. **Decision Super-session Trace (`decision_trace`):** Walks multi-hop `[:SUPERSEDES*1..4]` chains from that decision to check whether it was superseded or is stale.
 
 ### Tool Selection via Model Context Protocol (MCP)
 - Tools are declared using standard JSON Schema definitions in `nexus_api/agents/tools.py`.
 - Exposed through the official `mcp` Python SDK in `nexus_api/mcp_server.py`.
-- The agent loop calls tools via MCP client interfaces, allowing external MCP clients (including `npx @modelcontextprotocol/inspector`) to invoke NEXUS tools.
+- Any MCP client, including `npx @modelcontextprotocol/inspector`, can list and call the same tools. The built-in Scout, Planner and Scribe call the registry in-process in a fixed order; they do not choose tools with a model.
 
 ### Graph-Grounding & Explainable Results
 Every tool execution writes an explainable step node to FalkorDB:
@@ -107,7 +108,7 @@ SET f.status = 'superseded', f.invalid_at = $now
 
 ### 3. Procedural Memory (Playbooks)
 - Successful tool sequences are stored as `Procedure` nodes with ordered steps and `success_count`.
-- Subsequent similar incidents (e.g., `INC-84`) match the playbook pattern and reuse the proven tool sequence, cutting investigation latency.
+- Subsequent similar incidents (e.g., `INC-84`) match the playbook pattern and find the stored playbook. The run records and shows that the playbook was reused; the tool order itself stays fixed, so it does not yet shorten the run.
 
 ### 4. Shared State & Atomic Handoffs
 - Multi-agent coordination: **Scout** (Investigator) ➔ **Planner** (Strategist) ➔ **Scribe** (Remediation & Memory).

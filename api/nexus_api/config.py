@@ -30,7 +30,9 @@ class Settings(BaseSettings):
     QUERY_TIMEOUT_MS: int = 5000
 
     # LLM
-    LLM_PROVIDER: str = "anthropic"
+    LLM_PROVIDER: str = "groq"
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-5-5"
     OPENAI_API_KEY: str = ""

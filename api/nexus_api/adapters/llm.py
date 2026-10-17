@@ -195,30 +195,103 @@ class AnthropicLLM(LLMClient):
                 return schema.model_validate({}), True
 
 
+
+class GroqLLM(LLMClient):
+    """Groq's OpenAI-compatible chat API in JSON mode, with one repair retry and graceful degrade."""
+
+    URL = "https://api.groq.com/openai/v1/chat/completions"
+
+    def __init__(self) -> None:
+        settings = get_settings()
+        self.api_key = settings.GROQ_API_KEY
+        self.model = settings.GROQ_MODEL
+
+    async def _ask(self, system_prompt: str, messages: list[dict[str, str]]) -> str:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                self.URL,
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={
+                    "model": self.model,
+                    "temperature": 0.0,
+                    "max_tokens": 1500,
+                    "response_format": {"type": "json_object"},
+                    "messages": [{"role": "system", "content": system_prompt}, *messages],
+                },
+            )
+            resp.raise_for_status()
+            return str(resp.json()["choices"][0]["message"]["content"] or "")
+
+    async def generate_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        schema: type[T],
+    ) -> tuple[T, bool]:
+        system = (
+            f"{system_prompt}\n\nReturn one JSON object only. "
+            f"It must match this JSON schema:\n{json.dumps(schema.model_json_schema())}"
+        )
+        messages = [{"role": "user", "content": user_prompt}]
+        try:
+            raw = await self._ask(system, messages)
+            return schema.model_validate_json(extract_json(raw)), False
+        except Exception as first_exc:
+            logger.warning("Groq reply failed: %s; retrying once", first_exc)
+            try:
+                retry = [
+                    *messages,
+                    {"role": "user", "content": f"That reply failed validation: {first_exc}. Return only the corrected JSON object."},
+                ]
+                raw = await self._ask(system, retry)
+                return schema.model_validate_json(extract_json(raw)), False
+            except Exception as retry_exc:
+                logger.error("Groq retry failed: %s; degrading", retry_exc)
+                return schema.model_validate({}), True
+
+
 _llm_instance: LLMClient | None = None
 
 
 def llm_mode() -> str:
-    """Which engine answers questions: "claude", "openai" or "scripted" (offline answers).
+    """Which engine answers questions: "groq", "claude", "openai" or "scripted" (offline answers).
 
-    A configured key decides. LLM_PROVIDER=openai only matters when an OpenAI key is also set,
-    so a stale value in an old .env cannot hide a valid ANTHROPIC_API_KEY.
+    A configured key decides. LLM_PROVIDER picks the preferred engine when several keys are set, and a
+    stale provider name cannot hide a key that is set for another engine.
     """
     settings = get_settings()
-    if settings.LLM_PROVIDER == "openai" and settings.OPENAI_API_KEY and not settings.MOCK_EXTERNALS:
-        return "openai"
-    if settings.ANTHROPIC_API_KEY:
-        return "claude"
+    have = {
+        "groq": bool(settings.GROQ_API_KEY),
+        "claude": bool(settings.ANTHROPIC_API_KEY),
+        "openai": bool(settings.OPENAI_API_KEY) and not settings.MOCK_EXTERNALS,
+    }
+    preferred = {"anthropic": "claude"}.get(settings.LLM_PROVIDER, settings.LLM_PROVIDER)
+    if have.get(preferred):
+        return preferred
+    for mode in ("groq", "claude", "openai"):
+        if have[mode]:
+            return mode
     return "scripted"
+
+
+def llm_model_name() -> str | None:
+    """Model id used by the active engine, for display."""
+    settings = get_settings()
+    return {"groq": settings.GROQ_MODEL, "claude": settings.ANTHROPIC_MODEL, "openai": settings.LLM_MODEL}.get(
+        llm_mode()
+    )
 
 
 def get_llm_client() -> LLMClient:
     """Return configured LLMClient instance for the current mode."""
     mode = llm_mode()
+    if mode == "groq":
+        return GroqLLM()
     if mode == "claude":
         return AnthropicLLM()
-    elif mode == "openai":
+    if mode == "openai":
         return OpenAILLM()
-    else:
-        return MockLLM()
+    return MockLLM()
 

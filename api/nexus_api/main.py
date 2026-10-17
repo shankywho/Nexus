@@ -12,20 +12,20 @@ from fastapi.staticfiles import StaticFiles
 from redis.exceptions import RedisError
 
 from nexus_api.config import get_settings
+from nexus_api.mcp_server import router as mcp_router
 from nexus_api.routes.admin import router as admin_router
+from nexus_api.routes.agents import router as agents_router
 from nexus_api.routes.ask import router as ask_router
 from nexus_api.routes.audits import router as audits_router
 from nexus_api.routes.events import router as events_router
 from nexus_api.routes.graph import router as graph_router
 from nexus_api.routes.health import router as health_router
 from nexus_api.routes.ingest import router as ingest_router
+from nexus_api.routes.memory import router as memory_router
 from nexus_api.routes.provenance import router as provenance_router
 from nexus_api.routes.runs import router as runs_router
 from nexus_api.routes.sources import router as sources_router
 from nexus_api.routes.sync import router as sync_router
-from nexus_api.mcp_server import router as mcp_router
-from nexus_api.routes.agents import router as agents_router
-from nexus_api.routes.memory import router as memory_router
 
 logger = logging.getLogger(__name__)
 

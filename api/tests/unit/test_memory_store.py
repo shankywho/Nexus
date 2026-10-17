@@ -1,6 +1,5 @@
 """Unit tests for FalkorDB native agent memory engine (Track 02)."""
 
-import pytest
 
 from nexus_api.memory.store import get_memory_store
 
@@ -73,8 +72,8 @@ def test_tenant_memory_isolation() -> None:
 def test_conversation_history_persistence() -> None:
     store = get_memory_store(tenant="test_acme")
     conv_id = "conv_123"
-    t1 = store.append_turn(conv_id, "user_1", "user", "What happened to sessions?")
-    t2 = store.append_turn(conv_id, "user_1", "assistant", "Sessions moved back to Postgres per ADR-042.")
+    store.append_turn(conv_id, "user_1", "user", "What happened to sessions?")
+    store.append_turn(conv_id, "user_1", "assistant", "Sessions moved back to Postgres per ADR-042.")
 
     turns = store.get_conversation_history(conv_id)
     assert len(turns) >= 2

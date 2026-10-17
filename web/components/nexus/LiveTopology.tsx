@@ -261,7 +261,7 @@ export function LiveTopology({
   }, []);
 
   const fit = useCallback(() => {
-    fgRef.current?.zoomToFit(400, 48);
+    fgRef.current?.zoomToFit(400, 90);
   }, []);
 
   useEffect(() => {
@@ -279,13 +279,8 @@ export function LiveTopology({
   const layout = useMemo(() => layoutGraph(data), [data]);
   const graph = useMemo(
     () => ({
-      nodes: layout.nodes.map((n) => {
-        // Pin team hubs to seed positions to keep clusters stable
-        if (n.kind === "team") {
-          return { ...n, fx: n.x, fy: n.y };
-        }
-        return { ...n };
-      }) as FGNode[],
+      // every node is pinned to its seeded slot so the islands stay tidy and never drift
+      nodes: layout.nodes.map((n) => ({ ...n, fx: n.x, fy: n.y })) as FGNode[],
       links: layout.links.map((l) => ({ ...l })) as FGLink[],
     }),
     [layout],
@@ -357,9 +352,10 @@ export function LiveTopology({
   }, [tourStep, graph.nodes]);
 
   // Zoom to fit on initial mount and when data/batch updates
+  // the force graph takes a moment to ingest new data, so fit again a little later
   useEffect(() => {
-    const t = setTimeout(fit, 280);
-    return () => clearTimeout(t);
+    const timers = [280, 900, 1800].map((ms) => setTimeout(fit, ms));
+    return () => timers.forEach(clearTimeout);
   }, [fit, data]);
 
   // Configure D3 forces according to §6

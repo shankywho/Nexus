@@ -9,13 +9,11 @@ Implements tenant-isolated memory in `nexus_memory_<tenant>`:
 """
 
 import logging
-import time
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 from nexus_api.adapters.falkor import get_falkor_client
-from nexus_api.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +41,8 @@ class MemoryStore:
         for q in index_queries:
             try:
                 self.falkor.query(self.graph_name, q)
-            except Exception:
-                pass
+            except Exception as exc:  # index already exists
+                logger.debug("index skipped: %s", exc)
 
     # --- 1. Episodic Memory ---
 
@@ -593,8 +591,8 @@ class MemoryStore:
         """Wipe memory graph for this tenant."""
         try:
             self.falkor.query(self.graph_name, "MATCH (n) DETACH DELETE n")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("memory reset skipped: %s", exc)
 
 
 _memory_stores: dict[str, MemoryStore] = {}

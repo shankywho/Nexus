@@ -5,14 +5,11 @@ shared task handoffs, and native episodic/procedural memory storage.
 """
 
 import asyncio
-import json
 import logging
 import time
 import uuid
 from typing import Any
 
-from nexus_api.adapters.falkor import get_falkor_client
-from nexus_api.adapters.llm import llm_mode
 from nexus_api.agents.tools import TOOLS_BY_NAME
 from nexus_api.config import get_settings
 from nexus_api.memory.store import get_memory_store
@@ -116,7 +113,7 @@ class AgentRuntime:
                 },
             )
             step_num += 1
-            await asyncio.sleep(0.05)  # cooperative yield
+            await asyncio.sleep(0.3)  # paced so the UI shows each step as it happens
             return output
 
         # -------------------------------------------------------------
@@ -140,12 +137,20 @@ class AgentRuntime:
         # Step 3: Check structural criticality (PageRank / betweenness)
         await execute_step("Scout", "criticality_rank", {"org_id": self.tenant})
 
-        # Step 4: If upstream/downstream has known decisions, trace them
-        dec_to_trace = "DEC-017" if "session" in service_id or "checkout" in service_id else "DEC-028"
-        await execute_step("Scout", "decision_trace", {"decision_id": dec_to_trace, "org_id": self.tenant})
+        # Step 4: Multi-hop: which decisions affect this service or what it depends on?
+        impl = await execute_step("Scout", "find_implicated_decisions", {"service_id": service_id, "org_id": self.tenant})
+        chosen = (impl.get("result") or {}).get("chosen") or {}
+        dec_to_trace = str(chosen.get("id") or "")
+
+        # Step 5: Trace the chosen decision's supersession chain
+        if dec_to_trace:
+            await execute_step("Scout", "decision_trace", {"decision_id": dec_to_trace, "org_id": self.tenant})
 
         # Handoff: Scout -> Planner
-        scout_summary = f"Root service {service_id} affects checkout cascade. Maintainers identified. Decision {dec_to_trace} is implicated."
+        scout_summary = (
+            f"Mapped {service_id}: {len(all_touched)} graph nodes touched. "
+            + (f"Decision {dec_to_trace} is the newest live decision on it or its dependencies." if dec_to_trace else "No decision affects it.")
+        )
         self.memory.handoff_task(task_id, from_agent="Scout", to_agent="Planner", note=scout_summary)
         await self.eventbus.publish(
             "task.handoff",
@@ -164,22 +169,23 @@ class AgentRuntime:
         # -------------------------------------------------------------
         self.memory.claim_task_atomic(task_id, "Planner")
 
-        # Step 5: Recall past episodes and reusable procedures
+        # Step 6: Recall past episodes and reusable procedures
         recall_out = await execute_step("Planner", "recall", {"entities": list(all_touched), "tenant": self.tenant})
         has_playbook = recall_out.get("result", {}).get("has_matching_playbook", False)
 
-        # Step 6: Flag implicated decision for review
-        await execute_step(
-            "Planner",
-            "flag_decision_for_review",
-            {
-                "decision_id": dec_to_trace,
-                "reason": f"Implicated in {incident_id} ({title})",
-                "org_id": self.tenant,
-            },
-        )
+        # Step 7: Flag the implicated decision for review
+        if dec_to_trace:
+            await execute_step(
+                "Planner",
+                "flag_decision_for_review",
+                {
+                    "decision_id": dec_to_trace,
+                    "reason": f"Implicated in {incident_id} ({title})",
+                    "org_id": self.tenant,
+                },
+            )
 
-        # Step 7: Page owner
+        # Step 8: Page owner
         await execute_step(
             "Planner",
             "page_owner",
@@ -209,7 +215,7 @@ class AgentRuntime:
         # -------------------------------------------------------------
         self.memory.claim_task_atomic(task_id, "Scribe")
 
-        # Step 8: Open remediation tracking ticket
+        # Step 9: Open remediation tracking ticket
         await execute_step(
             "Scribe",
             "open_ticket",
@@ -224,7 +230,7 @@ class AgentRuntime:
         # Complete task
         self.memory.complete_task(task_id, resolution=f"Triage complete for {incident_id}. Actions recorded.")
 
-        # Step 9: Store learned episode and register/reinforce procedural playbook
+        # Step 10: Store learned episode and register/reinforce procedural playbook
         goal = f"Resolve {incident_id} service degradation on {service_id}"
         outcome = f"Blast radius mapped ({len(all_touched)} nodes), maintainers paged, action ticket created, {dec_to_trace} flagged."
         await execute_step(

@@ -7,7 +7,7 @@ Base URL: `http://localhost:8000`.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health`, `/api/health` | Liveness, FalkorDB status, graph counts and `llm.mode` (`claude`, `openai` or `scripted`). |
+| `GET` | `/health`, `/api/health` | Liveness, FalkorDB status, graph counts and `llm.mode` (`groq`, `claude`, `openai` or `scripted`). |
 | `POST` | `/api/ingest/event` | Ingest one event (Slack, Linear, GitHub, incident, ADR). Idempotent on event id. |
 | `POST` | `/api/audits/who-owns-what` | Ownership audit. |
 | `POST` | `/api/audits/decision-trace` | Decision lineage. Optional body: `{decision_id, service_id}`. |

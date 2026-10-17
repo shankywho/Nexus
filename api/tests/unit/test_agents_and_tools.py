@@ -1,6 +1,5 @@
 """Unit tests for agent tools registry, algorithms, and MCP dispatch."""
 
-import pytest
 
 from nexus_api.agents.tools import (
     TOOL_DEFINITIONS,
@@ -8,7 +7,6 @@ from nexus_api.agents.tools import (
     blast_radius,
     criticality_rank,
     decision_trace,
-    find_experts,
     who_owns,
 )
 
@@ -61,3 +59,15 @@ def test_decision_trace_finds_supersession() -> None:
     assert "result" in res
     assert "cypher" in res
     assert "DEC-017" in res["touched_ids"]
+
+
+def test_find_implicated_decisions_picks_from_graph() -> None:
+    """The decision to review comes from the graph (AFFECTS plus DEPENDS_ON hops), not from a constant."""
+    from nexus_api.agents.tools import find_implicated_decisions
+
+    out = find_implicated_decisions("web-checkout", org_id="acme")
+    assert "cypher" in out and out["rows"] >= 0
+    chosen = out["result"]["chosen"]
+    if chosen:  # only when the graph is seeded
+        assert chosen["id"].startswith("DEC-")
+        assert chosen["id"] in out["touched_ids"]

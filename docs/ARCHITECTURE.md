@@ -136,7 +136,7 @@ Each audit is a single Cypher query in [`api/nexus_api/cypher/`](../api/nexus_ap
 ## How a question is answered
 
 1. The router extracts intents and entities.
-2. With `ANTHROPIC_API_KEY` set, `services/graph_context.py` reads decisions, owners, incidents and the best-matching source events from `nexus_company`, and Claude writes a structured answer from that context only (`agents/prompts/answer.md`).
+2. With `GROQ_API_KEY` (or `ANTHROPIC_API_KEY`) set, `services/graph_context.py` reads decisions, owners, incidents and the best-matching source events from `nexus_company`, and the model writes a structured answer from that context only (`agents/prompts/answer.md`).
 3. `validate_and_filter_sources` drops any id that is not a node in the graph and moves superseded sources out of the current list.
 4. Without a key, scripted answers cover the original demo questions and `graph_fallback` builds an answer from the decisions that affect the service or topic in the question.
 

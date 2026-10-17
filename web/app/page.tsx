@@ -158,12 +158,12 @@ make up
 cd api && uv run python ../scripts/seed.py --reset
 open http://localhost:3000/nexus
 
-`}<span className="c"># optional: answer with Claude instead of offline answers</span>{`
-echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env`}</pre>
+`}<span className="c"># optional: answer with a Groq model instead of offline answers</span>{`
+echo 'GROQ_API_KEY=gsk_...' >> .env`}</pre>
               </div>
               <ul className="lp-list">
                 <li><b>Works offline.</b><span>Without a key, answers are built from the graph itself.</span></li>
-                <li><b>Claude answers are checked.</b><span>Claude reads decisions, owners, incidents and matching events from the graph. Any id it invents is dropped before you see it.</span></li>
+                <li><b>Model answers are checked.</b><span>A Groq or Claude model reads decisions, owners, incidents and matching events from the graph. Any id it invents is dropped before you see it.</span></li>
                 <li><b>What it is not yet.</b><span>The data is synthetic and arrives by replaying a file, not by live Slack or Linear connections. There is no user login.</span></li>
               </ul>
             </div>

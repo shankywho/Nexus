@@ -65,11 +65,11 @@ export function useSystemStatus({
     const claudeState: ClaudeState =
       !llm ? "offline-answers" : llm.mode === "scripted" ? "offline-answers" : "live";
     const claudeDotClass = claudeState === "live" ? "" : "is-busy";
-    const claudeLabel = claudeState === "live" ? (llm?.mode === "claude" ? "claude" : "openai") : "offline answers";
+    const claudeLabel = claudeState === "live" ? (llm?.mode ?? "llm") : "offline answers";
     const claudeTooltip =
       claudeState === "live"
         ? `Answers driven live by ${llm?.model ?? llm?.provider ?? "LLM"}`
-        : "Set ANTHROPIC_API_KEY in .env and restart API to enable live Claude intelligence";
+        : "Set GROQ_API_KEY in .env and restart the API to answer with a live model";
 
     // 3. Stream (SSE) status
     // Spec §3: "A red offline while the API is up is a bug; it should read grey stream idle."

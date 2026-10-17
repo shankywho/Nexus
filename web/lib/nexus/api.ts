@@ -170,7 +170,7 @@ export async function fetchSources(limit = 200): Promise<SourceEvent[]> {
 export interface Health {
   status: string;
   falkordb: string;
-  llm: { mode: "claude" | "openai" | "scripted"; provider: string; model: string | null };
+  llm: { mode: "groq" | "claude" | "openai" | "scripted"; provider: string; model: string | null };
 }
 
 export async function fetchHealth(): Promise<Health> {
@@ -232,6 +232,9 @@ export interface AgentRunResponse {
   final_output: string;
   steps: AgentStepTrace[];
   tasks: AgentTask[];
+  reused_playbook?: boolean;
+  total_latency_ms?: number;
+  tenant?: string;
   memory_summary?: {
     episode_id?: string;
     procedure_name?: string;
@@ -316,7 +319,17 @@ export async function fetchAgentTasks(
     throw new Error(`Failed to fetch agent tasks: ${res.statusText}`);
   }
   const data = await res.json();
-  return data.tasks ?? [];
+  // the API names handoff fields from/to/note; the UI types use from_agent/to_agent/reason
+  return (data.tasks ?? []).map((t: Record<string, unknown>) => ({
+    ...t,
+    handoffs: ((t.handoffs as Array<Record<string, string>> | undefined) ?? []).map((h) => ({
+      from_agent: h.from_agent ?? h.from ?? "",
+      to_agent: h.to_agent ?? h.to ?? "",
+      reason: h.reason ?? h.note ?? "",
+      note: h.note,
+      ts: h.ts ?? "",
+    })),
+  })) as AgentTask[];
 }
 
 export async function fetchRunTrace(
@@ -340,7 +353,14 @@ export async function fetchMemoryEpisodes(tenant = "acme"): Promise<MemoryEpisod
     throw new Error(`Failed to fetch episodes: ${res.statusText}`);
   }
   const data = await res.json();
-  return data.episodes ?? [];
+  return (data.episodes ?? []).map((e: Record<string, unknown>) => ({
+    id: String(e.id ?? ""),
+    incident_id: String(e.incident_id ?? ""),
+    summary: String(e.summary ?? e.goal ?? ""),
+    outcome: String(e.outcome ?? ""),
+    entities_touched: Array.isArray(e.entities_touched) ? (e.entities_touched as string[]) : [],
+    created_at: String(e.created_at ?? e.ts ?? ""),
+  })) as MemoryEpisode[];
 }
 
 export async function fetchMemoryFacts(tenant = "acme"): Promise<MemoryFact[]> {
@@ -351,7 +371,10 @@ export async function fetchMemoryFacts(tenant = "acme"): Promise<MemoryFact[]> {
     throw new Error(`Failed to fetch facts: ${res.statusText}`);
   }
   const data = await res.json();
-  return data.facts ?? [];
+  return (data.facts ?? []).map((f: Record<string, unknown>) => ({
+    ...f,
+    confidence: typeof f.confidence === "number" ? f.confidence : 0.9,
+  })) as MemoryFact[];
 }
 
 export async function fetchMemoryProcedures(tenant = "acme"): Promise<MemoryProcedure[]> {
@@ -362,7 +385,13 @@ export async function fetchMemoryProcedures(tenant = "acme"): Promise<MemoryProc
     throw new Error(`Failed to fetch procedures: ${res.statusText}`);
   }
   const data = await res.json();
-  return data.procedures ?? [];
+  return (data.procedures ?? []).map((p: Record<string, unknown>) => ({
+    name: String(p.name ?? `Playbook ${String(p.trigger_pattern ?? p.incident_pattern ?? "").replace(/^incident_/, "").toUpperCase()}`),
+    incident_pattern: String(p.incident_pattern ?? p.trigger_pattern ?? ""),
+    step_sequence: Array.isArray(p.step_sequence) ? (p.step_sequence as string[]) : Array.isArray(p.tool_sequence) ? (p.tool_sequence as string[]) : [],
+    success_count: Number(p.success_count ?? 0),
+    last_executed: String(p.last_executed ?? p.last_used ?? ""),
+  })) as MemoryProcedure[];
 }
 
 export async function resetTenantMemory(tenant = "acme"): Promise<{ status: string }> {
