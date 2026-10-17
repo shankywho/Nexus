@@ -8,6 +8,5 @@
 **/.ruff_cache
 var
 web
-docs
 *.md
 !api/README.md

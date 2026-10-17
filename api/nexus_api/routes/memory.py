@@ -1,4 +1,4 @@
-"""Memory routes exposing episodic, semantic, procedural memory, and history (Track 02)."""
+"""Memory routes exposing episodic, semantic, procedural memory, and history."""
 
 from typing import Any
 

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -30,6 +31,7 @@ async def test_integration_12_eval_benchmark() -> None:
         sys.executable,
         str(eval_script),
         cwd=str(root_dir / "api"),
+        env={**os.environ, "GROQ_API_KEY": "", "ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": ""},
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )

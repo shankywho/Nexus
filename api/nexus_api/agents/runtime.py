@@ -1,4 +1,4 @@
-"""Multi-Agent Runtime (Scout -> Planner -> Scribe) for Track 01 and Track 02.
+"""Multi-Agent Runtime (Scout -> Planner -> Scribe).
 
 Executes incident triage using MCP tool selection, multi-hop graph walks,
 shared task handoffs, and native episodic/procedural memory storage.

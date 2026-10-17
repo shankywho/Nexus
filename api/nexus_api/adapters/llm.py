@@ -1,6 +1,7 @@
 """LLM client adapter with deterministic mock mode, repair retry, and graceful degradation."""
 
 import abc
+import asyncio
 import json
 import logging
 import re
@@ -210,17 +211,23 @@ class GroqLLM(LLMClient):
         import httpx
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                self.URL,
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={
-                    "model": self.model,
-                    "temperature": 0.0,
-                    "max_tokens": 1500,
-                    "response_format": {"type": "json_object"},
-                    "messages": [{"role": "system", "content": system_prompt}, *messages],
-                },
-            )
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            body = {
+                "model": self.model,
+                "temperature": 0.0,
+                "max_tokens": 900,
+                "response_format": {"type": "json_object"},
+                "messages": [{"role": "system", "content": system_prompt}, *messages],
+            }
+            if self.model.startswith("openai/gpt-oss"):
+                body["reasoning_effort"] = "low"  # fewer hidden tokens against the per-minute limit
+            resp = await client.post(self.URL, headers=headers, json=body)
+            if resp.status_code == 429:
+                # free-tier rate limit: wait as long as Groq asks (capped), then try once more
+                wait = min(float(resp.headers.get("retry-after", "2") or 2), 8.0)
+                logger.warning("Groq rate limited; waiting %.1fs", wait)
+                await asyncio.sleep(wait)
+                resp = await client.post(self.URL, headers=headers, json=body)
             resp.raise_for_status()
             return str(resp.json()["choices"][0]["message"]["content"] or "")
 
@@ -232,7 +239,7 @@ class GroqLLM(LLMClient):
     ) -> tuple[T, bool]:
         system = (
             f"{system_prompt}\n\nReturn one JSON object only. "
-            f"It must match this JSON schema:\n{json.dumps(schema.model_json_schema())}"
+            f"It must match this JSON schema:\n{json.dumps(schema.model_json_schema(), separators=(',', ':'))}"
         )
         messages = [{"role": "user", "content": user_prompt}]
         try:

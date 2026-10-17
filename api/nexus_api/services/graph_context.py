@@ -13,7 +13,7 @@ _STOP = {
     "with", "about", "from", "by", "at", "be", "as", "any", "still", "now", "use", "using",
 }
 
-MAX_EVENTS = 18
+MAX_EVENTS = 6
 
 
 def tokens(text: str) -> set[str]:
@@ -56,8 +56,8 @@ def gather_context(question: str) -> tuple[dict[str, Any], set[str]]:
         org,
     ):
         decisions[did] = {
-            "id": did, "status": status, "summary": summary, "decided_at": decided,
-            "superseded_by": sup_by, "superseded_at": sup_at, "services": [], "sources": [],
+            "id": did, "status": status, "summary": str(summary)[:140], "decided_at": str(decided)[:10],
+            "superseded_by": sup_by, "services": [], "sources": [],
         }
         known.add(did)
     for did, sid in _rows(g, "MATCH (d:Decision {org_id:$org_id})-[:AFFECTS]->(s:Service) RETURN d.id, s.id", org):
@@ -70,7 +70,8 @@ def gather_context(question: str) -> tuple[dict[str, Any], set[str]]:
         org,
     ):
         if did in decisions:
-            decisions[did]["sources"].append({"id": sid, "title": str(title)[:160], "kind": kind, "date": str(created)[:10]})
+            if len(decisions[did]["sources"]) < 4:  # keep the prompt small for rate-limited providers
+                decisions[did]["sources"].append({"id": sid, "title": str(title)[:70], "date": str(created)[:10]})
             known.add(sid)
 
     services: dict[str, dict[str, Any]] = {}
@@ -110,14 +111,40 @@ def gather_context(question: str) -> tuple[dict[str, Any], set[str]]:
         if e.get("thread_id"):
             known.add(str(e["thread_id"]))
 
+    # send only what the question needs: rate-limited providers allow a few thousand tokens per minute
+    asked = tokens(question)
+
+    def overlap(text: str) -> int:
+        return len(asked & tokens(text))
+
+    ranked = sorted(
+        decisions.values(),
+        key=lambda d: overlap(f"{d['id']} {d['summary']} {' '.join(d['services'])} {' '.join(x['title'] for x in d['sources'])}"),
+        reverse=True,
+    )
+    scored = [d for d in ranked if overlap(f"{d['id']} {d['summary']} {' '.join(d['services'])} {' '.join(x['title'] for x in d['sources'])}") > 0]
+    if asked & {"superseded", "replaced", "stale", "supersedes", "invalid", "changed"}:
+        keep = {d["id"] for d in decisions.values() if d["status"] == "superseded"}
+    else:
+        keep = {d["id"] for d in (scored or sorted(decisions.values(), key=lambda d: str(d["decided_at"]), reverse=True))[:3]}
+    keep |= {d["superseded_by"] for d in decisions.values() if d["id"] in keep and d["superseded_by"]}
+    keep |= {d["id"] for d in decisions.values() if d["superseded_by"] in keep}
+    kept_decisions = [d for d in decisions.values() if d["id"] in keep]
+    kept_service_ids = {sid for d in kept_decisions for sid in d["services"]}
+    kept_services = [
+        sv for sv in services.values()
+        if sv["id"] in kept_service_ids or overlap(f"{sv['id']} {sv['name']}") > 0
+    ][:5]
+    kept_incidents = sorted(incidents, key=lambda i: overlap(f"{i['id']} {i['summary']}"), reverse=True)[:3]
+
     context = {
-        "decisions": list(decisions.values()),
-        "services": list(services.values()),
-        "incidents": incidents,
+        "decisions": kept_decisions,
+        "services": kept_services,
+        "incidents": kept_incidents,
         "relevant_events": [
             {
                 "id": e.get("id"), "kind": e.get("kind"), "ts": e.get("ts"), "actor": e.get("actor"),
-                "channel": e.get("channel"), "thread_id": e.get("thread_id"), "text": e.get("text"),
+                "channel": e.get("channel"), "thread_id": e.get("thread_id"), "text": str(e.get("text") or "")[:110],
                 "refs": {k: v for k, v in (e.get("refs") or {}).items() if v},
                 "supersedes": e.get("supersedes"), "reverses": e.get("reverses"),
             }

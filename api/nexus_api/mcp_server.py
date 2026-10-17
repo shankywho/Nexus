@@ -1,4 +1,4 @@
-"""NEXUS MCP Server exposing graph tools via Model Context Protocol (Track 01 & 02)."""
+"""NEXUS MCP Server exposing graph tools via Model Context Protocol."""
 
 import logging
 from typing import Any

@@ -1,4 +1,4 @@
-"""Unit tests for Phase 2: tolerant parsing, idempotency, supersession, router, temporal schema."""
+"""Unit tests for tolerant parsing, idempotency, supersession, router, temporal schema."""
 
 import pytest
 

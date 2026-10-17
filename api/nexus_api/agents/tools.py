@@ -1,4 +1,4 @@
-"""Agent tools registry for Track 01 and Track 02.
+"""Agent tools registry.
 
 Tools execute graph algorithms, multi-hop traversals, memory retrieval,
 and action generation. Every tool returns {result, cypher, rows, ms, touched_ids}.
@@ -311,7 +311,7 @@ def remember(
     }
 
 
-# Action tools (Actions based on what the graph shows - Track 1)
+# Action tools (Actions based on what the graph shows)
 
 
 def open_ticket(title: str, service_id: str, priority: str = "high", org_id: str = "acme") -> dict[str, Any]:

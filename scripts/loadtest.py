@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 NEXUS Memory & Multi-Agent Concurrency Load Test.
-Demonstrates Track 2 requirement:
+Checks:
   - High-concurrency reads and writes natively on FalkorDB
   - Zero race condition atomic task claims
   - Quantifies throughput (ops/sec) and p50/p95 latency metrics

@@ -1,4 +1,4 @@
-"""Agent routes for incident investigation and execution traces (Track 01 & 02)."""
+"""Agent routes for incident investigation and execution traces."""
 
 import json
 import logging
@@ -38,7 +38,7 @@ async def trigger_agent_run(
     if not title or not service_id:
         incidents_path = (
             Path(__file__).resolve().parent.parent.parent.parent
-            / "fixtures/company/demo_incidents.json"
+            / "fixtures/company/incidents.json"
         )
         if incidents_path.exists():
             try:
@@ -51,7 +51,7 @@ async def trigger_agent_run(
                             description = description or inc.get("description", "")
                             break
             except (OSError, ValueError) as exc:
-                logger.debug("demo incident lookup skipped: %s", exc)
+                logger.debug("incident lookup skipped: %s", exc)
         title = title or f"Incident {payload.incident_id}"
         service_id = service_id or "web-checkout"
 
@@ -96,9 +96,9 @@ def list_agent_tasks(
 
 
 @router.get("/incidents")
-def list_demo_incidents() -> dict[str, Any]:
-    """List canned demo incidents available to page agents with."""
-    incidents_path = Path(__file__).resolve().parent.parent.parent.parent / "fixtures/company/demo_incidents.json"
+def list_incidents() -> dict[str, Any]:
+    """List sample incidents available to page agents with."""
+    incidents_path = Path(__file__).resolve().parent.parent.parent.parent / "fixtures/company/incidents.json"
     if incidents_path.exists():
         with open(incidents_path, encoding="utf-8") as f:
             data: dict[str, Any] = json.load(f)

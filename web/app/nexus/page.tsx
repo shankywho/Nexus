@@ -14,8 +14,6 @@ import { MergedFooter } from "@/components/nexus/MergedFooter";
 import {
   PixelRobot,
   PixelLightbulb,
-  PixelInfo,
-  PixelClose,
   PixelChevronDown,
   PixelChevronUp,
 } from "@/components/nexus/PixelIcons";
@@ -40,7 +38,6 @@ export default function NexusDashboard() {
   const [tenant, setTenant] = useState<string>("acme");
   const [sidebarTab, setSidebarTab] = useState<"agents" | "ask">("agents");
   const [llm, setLlm] = useState<Health["llm"] | null>(null);
-  const [showTrackInfo, setShowTrackInfo] = useState(false);
   const [ledgerCollapsed, setLedgerCollapsed] = useState(false);
   const [supersedeFlashing, setSupersedeFlashing] = useState(false);
   const prevDead = useRef(0);
@@ -117,13 +114,12 @@ export default function NexusDashboard() {
     }
   };
 
-  // Keyboard shortcut: Esc clears audits, inspector, and info popover
+  // Keyboard shortcut: Esc clears audits and inspector
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         clearAudit();
         setInspected(null);
-        setShowTrackInfo(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -195,65 +191,6 @@ export default function NexusDashboard() {
             </span>
           </div>
 
-          {/* Track ⓘ Popover Button */}
-          <div className="relative">
-            <button
-              type="button"
-              className="nx-btn"
-              style={{ height: 26, width: 26, padding: 0, color: showTrackInfo ? "var(--nx-accent)" : "var(--nx-muted)" }}
-              onClick={() => setShowTrackInfo((s) => !s)}
-              title="Track Qualifications (WeMakeDevs x FalkorDB)"
-              aria-label="View track qualifications"
-              aria-expanded={showTrackInfo}
-            >
-              <PixelInfo size={14} />
-            </button>
-
-            {showTrackInfo && (
-              <div
-                className="absolute top-8 left-0 z-50 nx-panel p-3 shadow-2xl"
-                style={{ width: 330, border: "var(--bd)", background: "var(--nx-panel)" }}
-                role="dialog"
-                aria-label="Track Qualifications"
-              >
-                <div className="flex items-center justify-between pb-2 mb-2" style={{ borderBottom: "1px solid var(--nx-line)" }}>
-                  <span className="nx-display text-xs" style={{ color: "var(--nx-accent)" }}>
-                    TRACK QUALIFICATIONS
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowTrackInfo(false)}
-                    className="nx-btn"
-                    style={{ height: 20, width: 20, padding: 0 }}
-                    aria-label="Close"
-                  >
-                    <PixelClose size={12} />
-                  </button>
-                </div>
-                <div className="nx-mono text-xs flex flex-col gap-2.5">
-                  <div>
-                    <div className="font-bold" style={{ color: "var(--nx-accent)" }}>Track 1: Agents That Act</div>
-                    <div style={{ color: "var(--nx-muted)", marginTop: 2 }}>
-                      Autonomous 3-agent pod (Scout, Planner, Scribe) taking live multi-step triage actions.
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-bold" style={{ color: "var(--nx-info)" }}>Track 2: Memory & Coordination</div>
-                    <div style={{ color: "var(--nx-muted)", marginTop: 2 }}>
-                      Episodic & semantic memory graph, shared tasks, and tenant isolation (Acme vs Globex).
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-bold" style={{ color: "var(--nx-ok)" }}>Track 3: Company Brain</div>
-                    <div style={{ color: "var(--nx-muted)", marginTop: 2 }}>
-                      Living knowledge graph of teams, systems, decisions, and temporal superseding.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Compound Status Chip: graph · claude · stream */}
           <div
             className="nx-chip flex items-center gap-2"
@@ -284,7 +221,7 @@ export default function NexusDashboard() {
           <label
             className="nx-chip cursor-pointer flex items-center gap-1.5"
             style={{ height: 32, padding: "0 8px", maxWidth: 220 }}
-            title="Track 2 Tenant Isolation: Switch between Acme and Globex memory graphs"
+            title="Switch tenant: each company has its own memory graph"
           >
             <span className="nx-dot" style={{ background: tenant === "globex" ? "var(--nx-warn)" : "var(--nx-ok)" }} />
             <select

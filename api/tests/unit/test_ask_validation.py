@@ -1,4 +1,4 @@
-"""Unit tests for Phase 4: ask agent, superseded filtering, and hallucination dropping."""
+"""Unit tests for ask agent, superseded filtering, and hallucination dropping."""
 
 import pytest
 from scripts.seed import ensure_schema_indexes, seed_events, seed_people_and_services

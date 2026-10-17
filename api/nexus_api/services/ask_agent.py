@@ -274,7 +274,7 @@ async def _live_answer(question: str, as_of: str | None) -> tuple[LLMAnswer, boo
     import json
 
     context, _known = gather_context(question)
-    user = json.dumps({"question": question, "as_of": as_of, "graph_context": context}, default=str)
+    user = json.dumps({"question": question, "as_of": as_of, "graph_context": context}, default=str, separators=(",", ":"))
     llm = get_llm_client()
     answer, degraded = await llm.generate_json(_ANSWER_PROMPT, user, LLMAnswer)
     return answer, degraded, str(getattr(llm, "model", llm_mode()))
@@ -327,7 +327,7 @@ async def answer_question(request: AskRequest | str) -> AskResponse:
             elif row[1] == "superseded":
                 superseded_dec_ids.add(row[0])
 
-    # 3. Answer generation: Claude over graph context when a key is configured, scripted demo answers otherwise
+    # 3. Answer generation: Claude over graph context when a key is configured, scripted answers otherwise
     answer_text = ""
     current_sources: list[SourceRef] = []
     superseded_sources: list[SourceRef] = []

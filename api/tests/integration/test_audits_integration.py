@@ -1,4 +1,4 @@
-"""Integration tests for Phase 3: the 4 Quick Audits."""
+"""Integration tests for the four audits."""
 
 import pytest
 from httpx import AsyncClient

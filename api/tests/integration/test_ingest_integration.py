@@ -1,4 +1,4 @@
-"""Integration tests for Phase 2: duplicate handling, malformed webhooks, and the core session timeline."""
+"""Integration tests for duplicate handling, malformed webhooks, and the core session timeline."""
 
 import json
 from pathlib import Path

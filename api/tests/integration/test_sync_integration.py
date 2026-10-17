@@ -1,4 +1,4 @@
-"""Integration tests for Phase 5: sync simulation, SSE events, runs tracing, and debug."""
+"""Integration tests for sync simulation, SSE events, runs tracing, and debug."""
 
 import asyncio
 

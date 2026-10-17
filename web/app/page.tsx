@@ -50,7 +50,7 @@ export default function Landing() {
                 <Link className="lp-btn" href="/nexus">Open the office</Link>
                 <a className="lp-btn lp-btn-ghost" href="#lifecycle">See how a decision ends</a>
               </div>
-              <p className="lp-fine">The demo runs on Acme Payments, a made-up company with 76 events and nine decisions.</p>
+              <p className="lp-fine">The sample data is Acme Payments, a made-up company with 76 events and nine decisions.</p>
             </div>
             <ReplayScene />
           </div>
@@ -177,8 +177,7 @@ echo 'GROQ_API_KEY=gsk_...' >> .env`}</pre>
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot-in">
           <p>
-            Built on FalkorDB, Graphiti and GraphRAG-SDK. The pixel interface takes its cue from Munder Difflin (MIT), used with the author&apos;s permission.
-            Type: Press Start 2P and Atkinson Hyperlegible.
+            Built on FalkorDB.
           </p>
           <p><Link href="/nexus">Open the office</Link></p>
         </div>

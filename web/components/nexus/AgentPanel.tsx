@@ -7,13 +7,13 @@ import {
   fetchMemoryEpisodes,
   fetchMemoryFacts,
   fetchMemoryProcedures,
-  fetchDemoIncidents,
+  fetchIncidents,
   type AgentStepTrace,
   type AgentTask,
   type MemoryEpisode,
   type MemoryFact,
   type MemoryProcedure,
-  type DemoIncident,
+  type Incident,
   type AgentRunResponse,
 } from "@/lib/nexus/api";
 import type { UseAgentStreamReturn } from "@/lib/nexus/useAgentStream";
@@ -37,7 +37,7 @@ export function AgentPanel({
 }: AgentPanelProps) {
   const [activeTab, setActiveTab] = useState<PanelTab>("trace");
   const [memorySubTab, setMemorySubTab] = useState<MemorySubTab>("episodes");
-  const [incidents, setIncidents] = useState<DemoIncident[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedIncidentId, setSelectedIncidentId] = useState<string>("INC-83");
   const [loadingRun, setLoadingRun] = useState(false);
   const [expandedStepIndex, setExpandedStepIndex] = useState<number | null>(null);
@@ -50,9 +50,9 @@ export function AgentPanel({
   const [loadingMemory, setLoadingMemory] = useState(false);
   const [lastRunResponse, setLastRunResponse] = useState<AgentRunResponse | null>(null);
 
-  // Load demo incidents
+  // Load incidents
   useEffect(() => {
-    fetchDemoIncidents()
+    fetchIncidents()
       .then((res) => {
         setIncidents(res);
         if (res.length > 0) {

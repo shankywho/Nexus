@@ -1,4 +1,4 @@
-"""Unit tests for FalkorDB native agent memory engine (Track 02)."""
+"""Unit tests for FalkorDB native agent memory engine."""
 
 
 from nexus_api.memory.store import get_memory_store

@@ -182,10 +182,10 @@ export async function fetchHealth(): Promise<Health> {
 }
 
 // ---------------------------------------------------------------------------
-// Agent Runtime & Memory APIs (Tracks 1 & 2)
+// Agent Runtime & Memory APIs
 // ---------------------------------------------------------------------------
 
-export interface DemoIncident {
+export interface Incident {
   id: string;
   title: string;
   severity: string;
@@ -270,10 +270,10 @@ export interface MemoryProcedure {
   last_executed: string;
 }
 
-export async function fetchDemoIncidents(): Promise<DemoIncident[]> {
+export async function fetchIncidents(): Promise<Incident[]> {
   const res = await fetch(`${BASE_URL}/agents/incidents`);
   if (!res.ok) {
-    throw new Error(`Failed to fetch demo incidents: ${res.statusText}`);
+    throw new Error(`Failed to fetch incidents: ${res.statusText}`);
   }
   const data = await res.json();
   return data.incidents ?? [];
@@ -282,7 +282,7 @@ export async function fetchDemoIncidents(): Promise<DemoIncident[]> {
 export async function triggerAgentRun(
   incidentId: string,
   tenant = "acme",
-  incidentData?: Partial<DemoIncident>
+  incidentData?: Partial<Incident>
 ): Promise<AgentRunResponse> {
   const res = await fetch(`${BASE_URL}/agents/run`, {
     method: "POST",

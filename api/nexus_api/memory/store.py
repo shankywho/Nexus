@@ -1,4 +1,4 @@
-"""Native FalkorDB Agent Memory Engine for Track 02.
+"""Native FalkorDB Agent Memory Engine.
 
 Implements tenant-isolated memory in `nexus_memory_<tenant>`:
 1. Episodic Memory: Incidents, goals, outcomes, and touched entities.
