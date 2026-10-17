@@ -64,42 +64,36 @@ The header chip changes from "offline answers" to the model name and each answer
 
 ## Deploy: Vercel (web) and Render (API)
 
-This setup needs no Render Blueprint: create the API service by hand in the dashboard. Do the steps in this order.
+No Render Blueprint and no separate database are needed. `Dockerfile.render` builds one container that runs FalkorDB (in memory, localhost only) and the API together, and loads the sample company on every start.
 
-**1. FalkorDB.** Render's free tier cannot host a database container, so use a hosted FalkorDB (for example a FalkorDB Cloud free instance) or any FalkorDB reachable from the internet. Note its host, port, username and password, and whether it needs TLS.
-
-**2. API on Render.** New, Web Service, connect this repo, then:
+**API on Render.** New, Web Service, connect this repo, then:
 
 | Field | Value |
 |---|---|
 | Runtime | Docker |
-| Dockerfile path | `api/Dockerfile` |
+| Dockerfile path | `Dockerfile.render` |
 | Docker build context | `.` (repository root) |
 | Health check path | `/health` |
 | Instance type | Free |
 
-Environment variables:
+Environment variables (Render sets `PORT` itself; `AUTO_SEED=baseline` is already the image default):
 
-| Variable | Value |
-|---|---|
-| `FALKORDB_HOST`, `FALKORDB_PORT` | From step 1 |
-| `FALKORDB_USERNAME`, `FALKORDB_PASSWORD` | From step 1 |
-| `FALKORDB_SSL` | `true` if the host requires TLS |
-| `ADMIN_TOKEN` | A long random string (guards reset and delete) |
-| `AUTO_SEED` | `baseline`: loads the sample company and agent memory on first start, only when the graph is empty |
-| `CORS_ORIGINS` | Your Vercel URL, for example `https://nexus.vercel.app` (no trailing slash). Fill in after step 3 |
-| `GROQ_API_KEY` | Optional, for model answers |
+```
+ADMIN_TOKEN=<long random string, e.g. openssl rand -hex 32>
+CORS_ORIGINS=https://<your-app>.vercel.app
+GROQ_API_KEY=<optional, for model answers>
+```
 
-Render sets `PORT` itself; the image reads it. Check `https://<service>.onrender.com/health` shows `"falkordb":"up"` and non-zero graph counts.
+Check `https://<service>.onrender.com/health` shows `"falkordb":"up"` and non-zero graph counts.
 
-**3. Web on Vercel.** Import the repo, set **Root Directory** to `web`, framework Next.js, and add one environment variable: `NEXT_PUBLIC_API_URL=https://<service>.onrender.com` (no trailing slash). Next.js bakes it in at build time, so redeploy after changing it. In this mode the browser calls the API and the event stream directly, so the API must allow your Vercel origin: go back and set `CORS_ORIGINS` on Render to the Vercel URL. For preview deployments, also set `CORS_ORIGIN_REGEX`, for example `https://nexus-.*\.vercel\.app`.
+**Web on Vercel.** Import the repo, set **Root Directory** to `web`, framework Next.js, and add `NEXT_PUBLIC_API_URL=https://<service>.onrender.com` (no trailing slash). Next.js bakes it in at build time, so redeploy after changing it. The browser then calls the API and the event stream directly, so set `CORS_ORIGINS` on Render to your Vercel URL and redeploy the API. For preview deployments also set `CORS_ORIGIN_REGEX`, for example `https://nexus-.*\.vercel\.app`.
 
-Things to know about the free tiers:
+Things to know:
 
-- A free Render service sleeps after about 15 minutes idle. The first request after that takes up to a minute while it wakes; open the API health URL before showing the app.
-- Its disk is temporary: run history (`var/nexus.db`) is lost on restart. Graph data and agent memory live in FalkorDB and persist.
-- `AUTO_SEED` only seeds an empty graph. To start over, run `POST /api/admin/reset` with your `X-Admin-Token`, then restart the service.
-- There is no login. Anyone with the URL can ask questions and run agents, which uses your Groq quota and writes to the agent memory graphs. Keep `ADMIN_TOKEN` set and the URL private if that matters.
+- All data is in memory inside the container. A restart, redeploy or sleep wipes the graph, agent memory and run history, and `AUTO_SEED` loads the sample company again. This suits a sample-data app; it is not a place to keep real data.
+- A free Render service sleeps after about 15 minutes idle, and the first request after that takes up to a minute while it wakes and reseeds. Open the API health URL before showing the app.
+- To use an external FalkorDB instead, deploy `api/Dockerfile` and set `FALKORDB_HOST`, `FALKORDB_PORT`, `FALKORDB_PASSWORD` and `FALKORDB_SSL`.
+- There is no login. Anyone with the URL can ask questions and run agents, which uses your Groq quota. Keep `ADMIN_TOKEN` set.
 
 ## Architecture
 
